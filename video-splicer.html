@@ -967,6 +967,8 @@ let inPoint        = 0;
 let outPoint       = 0;
 let segments       = [];
 let exportQueue    = Promise.resolve();
+let exportTotal    = 0;
+let exportDone     = 0;
 let selectedSegIds = new Set();
 
 // Timeline zoom state
@@ -1943,8 +1945,9 @@ async function runExport(seg) {
     if (!seg._vid) throw new Error('Segment has no source video.');
     const token = await seg._vid.uploadPromise;
 
-    setStatus('busy', `Exporting "${seg.name}"…`);
-    showProgress(50);
+    const countLabel = exportTotal > 1 ? ` (${exportDone + 1} / ${exportTotal})` : '';
+    setStatus('busy', `Exporting "${seg.name}"${countLabel}…`);
+    showProgress(exportTotal > 1 ? (exportDone / exportTotal) * 100 : 50);
 
     const resp = await fetch('/api/trim', {
       method:  'POST',
@@ -1971,18 +1974,26 @@ async function runExport(seg) {
     const outExt   = { gif:'gif', mp4:'mp4', webm:'webm' }[seg.format] || getExt(seg._vid.filename);
     const filename = sanitize(seg.name) + '.' + outExt;
     triggerDownload(blob, filename);
-    setStatus('ready', `Downloaded: ${filename}`);
-    showProgress(0);
+    exportDone++;
+    if (exportTotal > 1 && exportDone < exportTotal) {
+      setStatus('busy', `Downloaded ${exportDone} / ${exportTotal} — next up: "${segments[exportDone]?.name || ''}"…`);
+    } else {
+      setStatus('ready', exportTotal > 1 ? `All ${exportTotal} exports complete ✓` : `Downloaded: ${filename}`);
+      showProgress(0);
+    }
 
   } catch (err) {
     console.error(err);
-    setStatus('error', 'Export failed: ' + err.message);
+    exportDone++;
+    setStatus('error', `Export failed (${exportDone}/${exportTotal}): ${err.message}`);
     showProgress(0);
   }
 }
 
 btnExportAll.addEventListener('click', () => {
-  setStatus('busy', `Queuing ${segments.length} export${segments.length !== 1 ? 's' : ''}…`);
+  exportTotal = segments.length;
+  exportDone  = 0;
+  setStatus('busy', `Starting ${exportTotal} export${exportTotal !== 1 ? 's' : ''}…`);
   segments.forEach(seg => exportSegment(seg));
 });
 
