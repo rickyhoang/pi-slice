@@ -1,0 +1,2488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>π slice</title>
+  <style>
+    :root {
+      --bg: #f5efe3;
+      --surface: #fdf8f0;
+      --surface2: #ede4d4;
+      --border: #d5c3aa;
+      --accent: #2860cc;
+      --accent2: #c05810;
+      --green: #1e7a3c;
+      --danger: #c02820;
+      --text: #1e0e00;
+      --text2: #7a5e3e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .header h1 { font-size: 16px; font-weight: 700; color: #000; letter-spacing: -0.3px; }
+    .header .hint { color: var(--text2); font-size: 12px; }
+    .header .hint kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    /* ── Upload ── */
+    #upload-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 64px 96px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(79,142,247,.06);
+    }
+    #drop-zone .icon { font-size: 52px; margin-bottom: 18px; line-height: 1; }
+    #drop-zone h2 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    #drop-zone p { color: var(--text2); line-height: 1.6; }
+    #drop-zone .formats { color: var(--text2); font-size: 12px; margin-top: 12px; }
+    #file-input { display: none; }
+
+    /* ── Editor ── */
+    #editor {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #editor.visible { display: flex; }
+
+    #main-area {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Left: video + timeline + controls ── */
+    #left-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    #video-wrapper {
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #video {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+    }
+
+    #timeline-area {
+      background: transparent;
+      border-top: 1px solid var(--border);
+      padding: 10px 14px 8px;
+      flex-shrink: 0;
+    }
+    #timeline-canvas {
+      display: block;
+      width: 100%;
+      height: 60px;
+      cursor: crosshair;
+      border-radius: 4px;
+    }
+
+    #controls-bar {
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .sep {
+      width: 1px;
+      height: 22px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .time-mono {
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--text2);
+      min-width: 68px;
+    }
+
+    .btn {
+      padding: 5px 13px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: opacity .15s, transform .1s;
+      flex-shrink: 0;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: default; }
+    .btn-primary   { background: var(--accent);  color: #fff; }
+    .btn-secondary { background: var(--surface);  color: var(--text); border: 1px solid var(--border); }
+    .btn-green     { background: var(--green);    color: #0a0f1a; font-weight: 600; }
+    .btn-orange    { background: var(--accent2);  color: #fff; }
+    .btn-danger    { background: var(--danger);   color: #fff; }
+
+    .point-inputs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .point-inputs label { color: var(--text2); font-size: 12px; }
+    .time-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      padding: 4px 7px;
+      font-family: monospace;
+      font-size: 12px;
+      width: 82px;
+    }
+    .time-input:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Right: segments panel ── */
+    #segments-panel {
+      width: 300px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-header h3 { font-size: 13px; font-weight: 600; }
+    .panel-header .count { font-size: 12px; color: var(--text2); }
+
+    #segments-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    #segments-list::-webkit-scrollbar { width: 5px; }
+    #segments-list::-webkit-scrollbar-track { background: transparent; }
+    #segments-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .empty-state {
+      padding: 36px 16px;
+      text-align: center;
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .empty-state kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    .segment-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 11px 10px;
+      margin-bottom: 7px;
+      position: relative;
+      transition: border-color .15s;
+    }
+    .segment-card:hover { border-color: rgba(79,142,247,.5); }
+
+    .seg-row1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+    .seg-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: #0a0f1a;
+    }
+    .seg-name {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      padding: 2px 3px;
+      min-width: 0;
+    }
+    .seg-name:focus { outline: none; border-bottom-color: var(--accent); }
+    .seg-remove {
+      background: none;
+      border: none;
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 15px;
+      padding: 0 3px;
+      border-radius: 3px;
+      line-height: 1;
+    }
+    .seg-remove:hover { color: var(--danger); background: rgba(247,79,79,.1); }
+
+    .seg-times {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 7px;
+      align-items: end;
+      margin-bottom: 7px;
+    }
+    .seg-time-field label {
+      display: block;
+      font-size: 10px;
+      color: var(--text2);
+      margin-bottom: 2px;
+    }
+    .seg-time-field .time-input { width: 100%; }
+
+    .seg-dur { font-size:11px; color:var(--text2); padding-left:2px; align-self:flex-end; padding-bottom:3px; white-space:nowrap; }
+    .seg-fmt-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 11px;
+      padding: 3px 6px;
+      cursor: pointer;
+    }
+    .seg-fmt-select:focus { outline: none; border-color: var(--accent); }
+    .gif-opts {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .gif-opts input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 11px;
+      padding: 3px 5px;
+      width: 46px;
+      text-align: center;
+    }
+    .gif-opts input:focus { outline: none; border-color: var(--accent); }
+    .seg-actions {
+      display: flex;
+      gap: 5px;
+    }
+    .seg-actions .btn { flex: 1; font-size: 11px; padding: 5px 6px; }
+
+    .panel-footer {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .panel-footer .btn { width: 100%; margin-bottom: 5px; }
+    .panel-footer .btn:last-child { margin-bottom: 0; }
+    #combine-row { flex-direction: column; gap: 5px; }
+    #combine-row select, #combine-row button { width: 100%; }
+
+    /* ── Video library sidebar ── */
+    #vid-library {
+      width: 170px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .vlib-header {
+      padding: 10px 10px 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .vlib-header span { font-size: 12px; font-weight: 600; }
+    .vlib-header .btn { font-size: 11px; padding: 3px 8px; }
+    #vid-list { flex: 1; overflow-y: auto; padding: 6px; }
+    #vid-list::-webkit-scrollbar { width: 4px; }
+    #vid-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .vid-item {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 8px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      transition: border-color .15s;
+    }
+    .vid-item:hover   { border-color: rgba(79,142,247,.5); }
+    .vid-item.active  { border-color: var(--accent); background: rgba(79,142,247,.08); }
+    .vid-info { flex: 1; min-width: 0; }
+    .vid-name { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+    .vid-meta { font-size: 10px; color: var(--text2); }
+    .vid-meta .uploading { color: var(--accent2); }
+    .vid-remove {
+      background: none; border: none; color: var(--text2);
+      cursor: pointer; font-size: 13px; padding: 0 2px; line-height: 1; flex-shrink: 0;
+    }
+    .vid-remove:hover { color: var(--danger); }
+
+    /* ── Audio section ── */
+    #audio-section {
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      flex-shrink: 0;
+    }
+    .audio-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .audio-label { font-size: 11px; color: var(--text2); }
+    .audio-filename { font-size: 11px; color: var(--text); flex: 1; min-width: 0;
+                      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Segment source tag ── */
+    .seg-source { font-size: 10px; color: var(--text2); margin-bottom: 6px;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Multi-view grid ── */
+    #mv-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+      background: #000;
+      overflow: hidden;
+    }
+    .mv-cell {
+      position: relative;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .mv-cell video { width:100%; height:100%; object-fit:contain; display:none; }
+    .mv-cell.assigned video { display:block; }
+    .mv-hud {
+      position: absolute; top:4px; left:4px;
+      display: flex; align-items:center; gap:5px;
+      background: rgba(0,0,0,.65); border-radius:4px;
+      padding: 2px 7px; font-size:11px;
+      opacity:0; transition:opacity .15s; pointer-events:none;
+    }
+    .mv-cell:hover .mv-hud, .mv-cell.assigned .mv-hud { opacity:1; pointer-events:auto; }
+    .mv-label { color:#fff; font-weight:600; max-width:100px;
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mv-assign-btn, .mv-clear-btn {
+      background:rgba(255,255,255,.2); border:none; color:#fff;
+      font-size:10px; padding:1px 6px; border-radius:3px; cursor:pointer;
+    }
+    .mv-assign-btn:hover { background:var(--accent); }
+    .mv-clear-btn:hover  { background:var(--danger); }
+    .mv-cell.drag-over   { outline:2px solid var(--accent); }
+    .mv-empty { color:var(--text2); font-size:12px; text-align:center; user-select:none; }
+    .mv-cell.assigned .mv-empty { display:none; }
+    /* Picker dropdown */
+    #mv-picker {
+      position:absolute; background:var(--surface2);
+      border:1px solid var(--border); border-radius:8px;
+      padding:6px; z-index:200; min-width:160px;
+      box-shadow:0 4px 20px rgba(0,0,0,.5);
+    }
+    .mv-picker-item {
+      padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .mv-picker-item:hover { background:var(--accent); color:#fff; }
+    .mv-picker-cancel { width:100%; margin-top:4px; }
+
+    /* ── Draw canvas & toolbar ── */
+    #video-wrapper { position: relative; }
+    #draw-canvas {
+      position: absolute; top:0; left:0; width:100%; height:100%;
+      pointer-events: none; touch-action: none;
+    }
+    #draw-canvas.active { pointer-events: all; cursor: crosshair; }
+    #draw-toolbar {
+      background: var(--surface2); border-top: 1px solid var(--border);
+      padding: 6px 12px; display: flex; align-items: center;
+      gap: 8px; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .draw-tools { display:flex; gap:3px; }
+    .draw-tool {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); width:28px; height:28px; border-radius:5px;
+      cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+    }
+    .draw-tool:hover { border-color:var(--accent); }
+    .draw-tool.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .draw-colors { display:flex; gap:4px; align-items:center; }
+    .draw-color-swatch {
+      width:20px; height:20px; border-radius:50%; border:2px solid transparent;
+      cursor:pointer; padding:0;
+    }
+    .draw-color-swatch.active { border-color:#fff; }
+    .draw-color-swatch:hover  { transform:scale(1.15); }
+    #draw-custom-color { width:24px; height:24px; border-radius:4px; border:1px solid var(--border); cursor:pointer; padding:0; background:none; }
+    .draw-sep { width:1px; height:24px; background:var(--border); flex-shrink:0; }
+    .draw-sizes { display:flex; align-items:center; gap:5px; }
+
+    /* ── Resize handles ── */
+    .resize-handle {
+      width: 4px; flex-shrink: 0; cursor: col-resize;
+      background: var(--border); transition: background .15s; z-index: 10;
+    }
+    .resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
+
+    /* ── Compress quality ── */
+    .crf-slider { flex:1; min-width:50px; accent-color:var(--accent); cursor:pointer; }
+    .crf-val    { color:var(--text); font-weight:600; font-family:monospace; font-size:11px; }
+    .crf-hint   { font-size:10px; color:var(--text2); white-space:nowrap; }
+    .seg-selected {
+      background:   color-mix(in srgb, var(--seg-color) 18%, var(--surface2)) !important;
+      border-color: var(--seg-color) !important;
+    }
+
+    /* ── Multi-view draw canvases ── */
+    .mv-draw-canvas {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      pointer-events:none;
+    }
+    .mv-draw-canvas.active { pointer-events:all; cursor:crosshair; }
+    .mv-cell.draw-target { outline:2px solid var(--accent2); }
+
+    /* ── Dark mode ── */
+    body.dark {
+      --bg: #0f1117; --surface: #1a1d2e; --surface2: #222638;
+      --border: #2d3558; --accent: #4f8ef7; --accent2: #f7914f;
+      --green: #4ff78e; --danger: #f74f4f; --text: #e2e8f0; --text2: #7a8aaa;
+    }
+    body.dark .header h1 { color: #e2e8f0; }
+
+    /* ── Segment checkbox — hidden by default, shown in select mode ── */
+    .seg-check { display:none; width:14px; height:14px; cursor:pointer; accent-color:var(--accent); flex-shrink:0; }
+    #segments-panel.select-mode .seg-check { display:inline-block; }
+
+    /* ── Combined options row (format + compress) ── */
+    .seg-options { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:6px; }
+    .compress-label { display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text2); cursor:pointer; white-space:nowrap; }
+    .compress-label input { accent-color:var(--accent); }
+
+    /* ── Notes toggle ── */
+    .seg-notes-toggle { background:none; border:none; color:var(--text2); font-size:11px; cursor:pointer; padding:0 0 4px; text-align:left; }
+    .seg-notes-toggle:hover { color:var(--accent); }
+
+    /* ── Thumbnail scrub ── */
+    #timeline-area { position: relative; }
+    #tl-thumb {
+      position: absolute; bottom: calc(100% + 6px);
+      background: #000; border: 2px solid var(--border);
+      border-radius: 6px; overflow: hidden;
+      pointer-events: none; z-index: 50;
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      transform: translateX(-50%);
+    }
+    #tl-thumb canvas { display:block; width:160px; height:90px; }
+    #tl-thumb-time {
+      display:block; text-align:center; font-size:11px;
+      font-family:monospace; background:rgba(0,0,0,.7);
+      color:#fff; padding:2px 4px;
+    }
+
+    /* ── Step notes ── */
+    .seg-notes {
+      width:100%; background:transparent;
+      border:1px solid var(--border); border-radius:4px;
+      color:var(--text); font-size:11px; padding:5px 7px;
+      resize:vertical; min-height:46px; font-family:inherit;
+      margin-bottom:6px;
+    }
+    .seg-notes:focus { outline:none; border-color:var(--accent); }
+    .seg-notes::placeholder { color:var(--text2); }
+
+    /* ── Batch rename ── */
+    #batch-rename {
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+      background: var(--surface2); display:none; flex-shrink:0;
+    }
+    #batch-rename .rename-row { display:flex; gap:5px; align-items:center; }
+    #rename-pattern { flex:1; }
+
+    /* ── Speed & zoom ── */
+    .speed-select { width:58px; font-size:12px; padding:3px 4px; }
+    #zoom-badge {
+      font-size:10px; font-family:monospace; color:var(--text2);
+      background:var(--surface2); border-radius:3px;
+      padding:1px 5px; cursor:pointer; user-select:none;
+    }
+    #zoom-badge:hover { color:var(--danger); }
+
+    /* ── Segment hover thumbnail popup ── */
+    #seg-hover-thumb {
+      position:fixed; z-index:200; pointer-events:none;
+      background:#000; border:2px solid var(--border);
+      border-radius:8px; overflow:hidden; display:none;
+      box-shadow:0 6px 24px rgba(0,0,0,.5); width:220px;
+    }
+    #seg-hover-thumb img { display:block; width:220px; height:124px; object-fit:cover; }
+    #seg-hover-label {
+      padding:5px 8px; font-size:11px; color:#fff;
+      background:rgba(0,0,0,.75); white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis;
+    }
+
+    /* ── Drag-to-reorder ── */
+    .seg-drag-handle {
+      cursor:grab; color:var(--text2); font-size:14px; user-select:none;
+      flex-shrink:0; padding:0 1px; line-height:1;
+    }
+    .seg-drag-handle:active { cursor:grabbing; }
+    .segment-card.dragging  { opacity:.45; }
+    .segment-card.drag-over-seg { border-top:2px solid var(--accent); margin-top:-1px; }
+
+    /* ── Orphaned segment (session restored, video not yet imported) ── */
+    .seg-orphaned { opacity:.65; }
+    .seg-orphaned-badge { font-size:10px; color:var(--accent2); padding:2px 0 4px; }
+
+    /* ── Restore session banner ── */
+    #restore-banner {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:8px; padding:10px 14px;
+      display:flex; align-items:center; gap:10px;
+      margin-top:14px; font-size:13px;
+    }
+    #restore-banner .restore-msg { flex:1; }
+    #restore-banner .restore-msg strong { display:block; margin-bottom:2px; }
+    #restore-banner .restore-msg span  { font-size:11px; color:var(--text2); }
+
+    /* ── Status bar ── */
+    #status-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 5px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text2);
+      flex-shrink: 0;
+      min-height: 28px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+    .status-dot.busy   { background: var(--accent2); animation: blink 1s infinite; }
+    .status-dot.error  { background: var(--danger); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    #progress-wrap {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      display: none;
+      overflow: hidden;
+    }
+    #progress-wrap.visible { display: block; }
+    #progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width .15s;
+    }
+
+    /* tooltip */
+    [data-tip] { position: relative; }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000c;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .12s;
+    }
+    [data-tip]:hover::after { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>π slice</h1>
+  <span class="hint">
+    <kbd>Space</kbd> play/pause &nbsp;
+    <kbd>Q</kbd> set start &nbsp;
+    <kbd>E</kbd> set end &nbsp;
+    <kbd>Enter</kbd> add segment &nbsp;
+    <kbd>← →</kbd> seek 1s &nbsp;
+    <kbd>Shift+← →</kbd> seek 10s
+  </span>
+  <button id="btn-dark-mode" class="btn btn-secondary" style="margin-left:auto;font-size:14px;padding:3px 9px;flex-shrink:0" title="Toggle dark/light mode">🌙</button>
+</div>
+
+<!-- Upload screen -->
+<div id="upload-screen">
+  <div id="drop-zone">
+    <div class="icon">🎬</div>
+    <h2>Import a video</h2>
+    <p>Drag &amp; drop a video file here<br>or click to browse</p>
+    <p class="formats">MP4 · MOV · WebM · AVI · MKV</p>
+  </div>
+  <div id="restore-banner" style="display:none">
+    <div class="restore-msg">
+      <strong id="restore-title">Restore last session?</strong>
+      <span id="restore-sub"></span>
+    </div>
+    <button class="btn btn-primary"   id="btn-restore-yes">Restore</button>
+    <button class="btn btn-secondary" id="btn-restore-no">Dismiss</button>
+  </div>
+  <input type="file" id="file-input" accept="video/*">
+</div>
+
+<!-- Editor -->
+<div id="editor">
+  <div id="main-area">
+
+    <!-- Video library sidebar -->
+    <div id="vid-library" style="width:170px">
+      <div class="vlib-header">
+        <span>Videos</span>
+        <button class="btn btn-primary" id="btn-add-video">+ Add</button>
+      </div>
+      <div id="vid-list"></div>
+    </div>
+    <input type="file" id="add-video-input" accept="video/*" multiple style="display:none">
+    <input type="file" id="audio-input"     accept="audio/*"          style="display:none">
+    <div class="resize-handle" id="rh-left"></div>
+
+    <!-- Left panel: video + timeline + controls -->
+    <div id="left-panel">
+      <div id="video-wrapper">
+        <video id="video" controls preload="auto"></video>
+        <canvas id="draw-canvas"></canvas>
+      </div>
+
+      <!-- Draw toolbar (shown when draw mode is active) -->
+      <div id="draw-toolbar" style="display:none">
+        <div class="draw-tools">
+          <button class="draw-tool active" data-tool="pen"    title="Pen">✏</button>
+          <button class="draw-tool"        data-tool="line"   title="Line">╱</button>
+          <button class="draw-tool"        data-tool="arrow"  title="Arrow">→</button>
+          <button class="draw-tool"        data-tool="rect"   title="Rectangle">□</button>
+          <button class="draw-tool"        data-tool="circle" title="Circle">○</button>
+          <button class="draw-tool"        data-tool="text"   title="Text">T</button>
+          <button class="draw-tool"        data-tool="eraser" title="Eraser">⌫</button>
+        </div>
+        <div class="draw-sep"></div>
+        <div class="draw-colors">
+          <button class="draw-color-swatch" style="background:#ff3b3b" data-color="#ff3b3b"></button>
+          <button class="draw-color-swatch" style="background:#ffdd00" data-color="#ffdd00"></button>
+          <button class="draw-color-swatch" style="background:#3bff6e" data-color="#3bff6e"></button>
+          <button class="draw-color-swatch" style="background:#3baeff" data-color="#3baeff"></button>
+          <button class="draw-color-swatch" style="background:#ffffff" data-color="#ffffff"></button>
+          <button class="draw-color-swatch" style="background:#000000" data-color="#000000"></button>
+          <input type="color" id="draw-custom-color" title="Custom colour" value="#ff3b3b">
+        </div>
+        <div class="draw-sep"></div>
+        <div class="draw-sizes">
+          <label style="font-size:11px;color:var(--text2)">Size</label>
+          <input type="range" id="draw-size" min="1" max="30" value="4" style="width:70px">
+          <span id="draw-size-label" style="font-size:11px;color:var(--text2);min-width:18px">4</span>
+        </div>
+        <div class="draw-sep"></div>
+        <button class="btn btn-secondary" id="btn-draw-undo"  style="font-size:11px;padding:4px 8px">↩ Undo</button>
+        <button class="btn btn-secondary" id="btn-draw-clear" style="font-size:11px;padding:4px 8px">🗑 Clear</button>
+        <button class="btn btn-primary"   id="btn-draw-save"  style="font-size:11px;padding:4px 8px">↓ Save PNG</button>
+      </div>
+
+      <!-- Multi-view grid (hidden until toggled) -->
+      <div id="mv-grid" style="display:none">
+        <div class="mv-cell" id="mv-cell-0">
+          <video id="mv-v0" preload="auto" muted></video>
+          <canvas class="mv-draw-canvas" id="mv-dc-0"></canvas>
+          <div class="mv-hud"><span class="mv-label" id="mv-lbl-0">Slot 1</span><button class="mv-assign-btn" data-slot="0">Change</button><button class="mv-clear-btn" data-slot="0">✕</button></div>
+          <div class="mv-empty">Click or drag video here</div>
+        </div>
+        <div class="mv-cell" id="mv-cell-1">
+          <video id="mv-v1" preload="auto" muted></video>
+          <canvas class="mv-draw-canvas" id="mv-dc-1"></canvas>
+          <div class="mv-hud"><span class="mv-label" id="mv-lbl-1">Slot 2</span><button class="mv-assign-btn" data-slot="1">Change</button><button class="mv-clear-btn" data-slot="1">✕</button></div>
+          <div class="mv-empty">Click or drag video here</div>
+        </div>
+        <div class="mv-cell" id="mv-cell-2">
+          <video id="mv-v2" preload="auto" muted></video>
+          <canvas class="mv-draw-canvas" id="mv-dc-2"></canvas>
+          <div class="mv-hud"><span class="mv-label" id="mv-lbl-2">Slot 3</span><button class="mv-assign-btn" data-slot="2">Change</button><button class="mv-clear-btn" data-slot="2">✕</button></div>
+          <div class="mv-empty">Click or drag video here</div>
+        </div>
+        <div class="mv-cell" id="mv-cell-3">
+          <video id="mv-v3" preload="auto" muted></video>
+          <canvas class="mv-draw-canvas" id="mv-dc-3"></canvas>
+          <div class="mv-hud"><span class="mv-label" id="mv-lbl-3">Slot 4</span><button class="mv-assign-btn" data-slot="3">Change</button><button class="mv-clear-btn" data-slot="3">✕</button></div>
+          <div class="mv-empty">Click or drag video here</div>
+        </div>
+      </div>
+      <!-- Video picker overlay -->
+      <div id="mv-picker" style="display:none">
+        <div id="mv-picker-list"></div>
+        <button class="btn btn-secondary mv-picker-cancel" id="mv-picker-cancel">Cancel</button>
+      </div>
+
+      <div id="timeline-area">
+        <canvas id="timeline-canvas" height="60"></canvas>
+        <!-- Thumbnail scrub tooltip -->
+        <div id="tl-thumb" style="display:none">
+          <canvas id="tl-thumb-canvas" width="160" height="90"></canvas>
+          <span id="tl-thumb-time"></span>
+        </div>
+      </div>
+      <video id="tl-thumb-video" muted preload="auto" style="display:none"></video>
+
+      <div id="controls-bar">
+        <button class="btn btn-primary"  id="btn-set-in"
+                data-tip="Set In point [Q]">▶| Start</button>
+        <button class="btn btn-orange"   id="btn-set-out"
+                data-tip="Set Out point [E]">|◀ End</button>
+        <button class="btn btn-green"    id="btn-add"
+                data-tip="Add segment [Enter]">+ Add</button>
+        <button class="btn btn-secondary" id="btn-multiview"
+                data-tip="4-screen sync view">⊞ Multi-View</button>
+        <button class="btn btn-secondary" id="btn-draw"
+                data-tip="Annotate & draw on frame">✏ Draw</button>
+        <button class="btn btn-secondary" id="btn-fullscreen"
+                data-tip="Fullscreen video [F]">⛶</button>
+
+        <div class="sep"></div>
+
+        <select id="speed-select" class="seg-fmt-select speed-select" data-tip="Playback speed">
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+        </select>
+
+        <div class="sep"></div>
+
+        <span class="time-mono" id="time-current">0:00.0</span>
+        <span style="color:var(--text2);font-size:12px">/</span>
+        <span class="time-mono" id="time-total">0:00.0</span>
+        <span id="zoom-badge" title="Scroll timeline to zoom · Click to reset">1×</span>
+
+        <div class="point-inputs">
+          <label>In:</label>
+          <input id="in-input"  class="time-input" type="text" value="0:00.0">
+          <label>Out:</label>
+          <input id="out-input" class="time-input" type="text" value="0:00.0">
+        </div>
+      </div>
+    </div>
+
+    <div class="resize-handle" id="rh-right"></div>
+    <!-- Right panel: segments -->
+    <div id="segments-panel" style="width:300px">
+      <div class="panel-header">
+        <h3>Segments</h3>
+        <span class="count" id="seg-count">0 segments</span>
+        <button class="btn btn-secondary" id="btn-batch-rename"
+                style="font-size:11px;padding:3px 8px" title="Batch rename all segments">✎ Rename</button>
+      </div>
+
+      <div id="batch-rename">
+        <div class="rename-row">
+          <button class="btn btn-secondary" id="btn-select-all" style="font-size:11px;padding:4px 8px;white-space:nowrap">☑ All</button>
+          <input id="rename-pattern" class="time-input" placeholder="e.g. step_{n}" value="step_{n}" style="flex:1">
+          <button class="btn btn-primary"   id="btn-apply-rename" style="font-size:11px;padding:4px 8px">Apply</button>
+          <button class="btn btn-secondary" id="btn-close-rename" style="font-size:11px;padding:4px 8px">✕</button>
+        </div>
+      </div>
+
+      <div id="segments-list">
+        <div class="empty-state" id="empty-state">
+          Seek to a point, press <kbd>Q</kbd> to set start<br>
+          and <kbd>E</kbd> to set end, then <kbd>Enter</kbd><br>
+          to add a segment.
+        </div>
+      </div>
+
+      <div class="panel-footer">
+        <button class="btn btn-primary"   id="btn-export-all"   style="display:none">↓ Export All</button>
+        <button class="btn btn-secondary" id="btn-notion-preset" style="display:none" title="Set all segments to MP4 CRF 28 — good for Notion uploads">📋 Notion Ready</button>
+        <button class="btn btn-secondary" id="btn-export-notes" style="display:none">📄 Export Notes (.md)</button>
+        <div id="combine-row" style="display:none">
+          <select id="combine-fmt" class="seg-fmt-select">
+            <option value="mp4">Combine → MP4</option>
+            <option value="webm">Combine → WebM</option>
+          </select>
+          <button class="btn btn-orange" id="btn-combine">⛓ Join & Download</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Status bar -->
+  <div id="status-bar">
+    <div class="status-dot busy" id="status-dot"></div>
+    <span id="status-text">Checking server…</span>
+    <div id="progress-wrap"><div id="progress-fill"></div></div>
+  </div>
+</div>
+
+<!-- Segment hover thumbnail -->
+<div id="seg-hover-thumb">
+  <img alt="">
+  <div id="seg-hover-label"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// ELEMENTS
+// ─────────────────────────────────────────────
+const uploadScreen  = document.getElementById('upload-screen');
+const dropZone      = document.getElementById('drop-zone');
+const fileInput     = document.getElementById('file-input');
+const addVideoInput = document.getElementById('add-video-input');
+const audioInput    = document.getElementById('audio-input');
+const editor        = document.getElementById('editor');
+const video         = document.getElementById('video');
+const tlCanvas      = document.getElementById('timeline-canvas');
+const tlCtx         = tlCanvas.getContext('2d');
+const btnSetIn      = document.getElementById('btn-set-in');
+const btnSetOut     = document.getElementById('btn-set-out');
+const btnAdd        = document.getElementById('btn-add');
+const timeCurrent   = document.getElementById('time-current');
+const timeTotal     = document.getElementById('time-total');
+const inInput       = document.getElementById('in-input');
+const outInput      = document.getElementById('out-input');
+const segmentsList  = document.getElementById('segments-list');
+const emptyState    = document.getElementById('empty-state');
+const segCount      = document.getElementById('seg-count');
+const btnExportAll  = document.getElementById('btn-export-all');
+const combineRow    = document.getElementById('combine-row');
+const combineFmt    = document.getElementById('combine-fmt');
+const btnCombine    = document.getElementById('btn-combine');
+const btnMultiview  = document.getElementById('btn-multiview');
+const mvGrid        = document.getElementById('mv-grid');
+const videoWrapper  = document.getElementById('video-wrapper');
+const mvPicker      = document.getElementById('mv-picker');
+const mvVideoEls    = [0,1,2,3].map(i => document.getElementById(`mv-v${i}`));
+const statusDot     = document.getElementById('status-dot');
+const statusText    = document.getElementById('status-text');
+const progressWrap  = document.getElementById('progress-wrap');
+const progressFill  = document.getElementById('progress-fill');
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let videos         = [];   // [{file, filename, token, uploadPromise, duration}]
+let activeVideoIdx = -1;
+let inPoint        = 0;
+let outPoint       = 0;
+let segments       = [];
+let exportQueue    = Promise.resolve();
+let selectedSegIds = new Set();
+
+// Timeline zoom state
+let tlZoom   = 1;    // 1 = full video visible
+let tlOffset = 0;    // start time of visible window (seconds)
+
+// Multi-view state
+let multiViewActive = false;
+let multiSlots      = [null, null, null, null]; // vid object per slot
+let mvPickerSlot    = -1; // which slot the picker is open for
+
+const PALETTE = ['#4f8ef7','#f7914f','#4ff78e','#f74f8e','#c34ff7','#f7df4f','#4ff7c3','#f74f4f'];
+
+// ─────────────────────────────────────────────
+// SERVER CHECK
+// ─────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    if (!d.ffmpeg) {
+      setStatus('error', 'ffmpeg not installed on server. Run in PowerShell:  winget install ffmpeg  then restart serve.py');
+    } else {
+      setStatus('ready', 'Ready — import a video to begin');
+    }
+  } catch {
+    setStatus('error', 'Cannot reach server. Make sure serve.py is running and you opened http://localhost:8080/video-splicer.html');
+  }
+}
+
+// ─────────────────────────────────────────────
+// UPLOAD
+// ─────────────────────────────────────────────
+function uploadFile(file, label) {
+  const mb = (file.size / 1024 / 1024).toFixed(0);
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload');
+    xhr.setRequestHeader('X-Filename', file.name);
+    xhr.upload.addEventListener('progress', e => {
+      if (e.lengthComputable) {
+        const pct = (e.loaded / e.total * 100).toFixed(0);
+        setStatus('busy', `Uploading ${label || file.name} (${mb} MB)… ${pct}%`);
+        showProgress(e.loaded / e.total * 100);
+      }
+    });
+    xhr.addEventListener('load', () => {
+      showProgress(0);
+      if (xhr.status === 200) {
+        resolve(JSON.parse(xhr.responseText).token);
+      } else {
+        let msg = 'Upload failed (' + xhr.status + ')';
+        try { msg = JSON.parse(xhr.responseText).error || msg; } catch(_) {}
+        setStatus('error', msg);
+        reject(new Error(msg));
+      }
+    });
+    xhr.addEventListener('error', () => {
+      const msg = 'Upload failed — make sure serve.py is running';
+      setStatus('error', msg);
+      reject(new Error(msg));
+    });
+    xhr.send(file);
+  });
+}
+
+// ─────────────────────────────────────────────
+// STATUS / PROGRESS
+// ─────────────────────────────────────────────
+function setStatus(type, msg) {
+  statusText.textContent = msg;
+  statusDot.className = 'status-dot' + (type === 'busy' ? ' busy' : type === 'error' ? ' error' : '');
+}
+
+function showProgress(pct) {
+  if (pct > 0 && pct < 100) {
+    progressWrap.classList.add('visible');
+    progressFill.style.width = pct + '%';
+  } else {
+    progressWrap.classList.remove('visible');
+    progressFill.style.width = '0%';
+  }
+}
+
+// ─────────────────────────────────────────────
+// FILE IMPORT
+// ─────────────────────────────────────────────
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  [...e.dataTransfer.files].filter(f => f.type.startsWith('video/')).forEach(addVideo);
+});
+fileInput.addEventListener('change', e => {
+  [...e.target.files].forEach(addVideo);
+  e.target.value = '';
+});
+document.getElementById('btn-add-video').addEventListener('click', () => addVideoInput.click());
+addVideoInput.addEventListener('change', e => {
+  [...e.target.files].forEach(addVideo);
+  e.target.value = '';
+});
+
+function addVideo(file) {
+  const vid = { file, filename: file.name, token: null, uploadPromise: null, duration: 0 };
+  const idx = videos.length;
+  videos.push(vid);
+
+  // Start upload immediately
+  vid.uploadPromise = uploadFile(file, file.name)
+    .then(token => {
+      vid.token = token;
+      setStatus('ready', `"${file.name}" ready`);
+      renderVideoLibrary();
+      linkOrphanedSegments(vid);
+      return token;
+    })
+    .catch(err => { setStatus('error', err.message); throw err; });
+
+  switchVideo(idx);
+  uploadScreen.style.display = 'none';
+  editor.classList.add('visible');
+}
+
+function switchVideo(idx) {
+  if (idx < 0 || idx >= videos.length) return;
+  activeVideoIdx = idx;
+  tlZoom = 1; tlOffset = 0; // reset zoom on new video
+  document.getElementById('zoom-badge').textContent = '1×';
+  const vid = videos[idx];
+  const objUrl = URL.createObjectURL(vid.file);
+  video.src = objUrl;
+  thumbVideo.src = objUrl; // keep thumbnail in sync
+  video.addEventListener('loadedmetadata', () => {
+    vid.duration = video.duration;
+    inPoint  = 0;
+    outPoint = video.duration;
+    updateMarkerInputs();
+    timeTotal.textContent = fmt(video.duration);
+    drawTimeline();
+    renderVideoLibrary();
+  }, { once: true });
+}
+
+function removeVideo(idx) {
+  const vid = videos[idx];
+  segments = segments.filter(s => s._vid !== vid);
+  // Clear any multi-view slots referencing this video
+  multiSlots.forEach((slot, i) => { if (slot === vid) clearSlot(i); });
+  videos.splice(idx, 1);
+  if (videos.length === 0) {
+    activeVideoIdx = -1;
+    video.src = '';
+    uploadScreen.style.display = '';
+    editor.classList.remove('visible');
+  } else {
+    switchVideo(Math.min(idx, videos.length - 1));
+  }
+  renderVideoLibrary();
+  renderSegments();
+  drawTimeline();
+}
+
+function renderVideoLibrary() {
+  const list = document.getElementById('vid-list');
+  list.innerHTML = '';
+  videos.forEach((vid, idx) => {
+    const el = document.createElement('div');
+    el.className = 'vid-item' + (idx === activeVideoIdx ? ' active' : '');
+    el.innerHTML = `
+      <div class="vid-info">
+        <div class="vid-name" title="${esc(vid.filename)}">${esc(vid.filename)}</div>
+        <div class="vid-meta">${vid.duration ? fmtShort(vid.duration) : '…'}
+          ${vid.token ? '' : '<span class="uploading"> ↑ uploading</span>'}
+        </div>
+      </div>
+      <button class="vid-remove" title="Remove">×</button>`;
+    el.draggable = true;
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', String(idx));
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    el.addEventListener('click', e => { if (!e.target.classList.contains('vid-remove')) switchVideo(idx); });
+    el.querySelector('.vid-remove').addEventListener('click', e => { e.stopPropagation(); removeVideo(idx); });
+    list.appendChild(el);
+  });
+}
+
+// ─────────────────────────────────────────────
+// MULTI-VIEW
+// ─────────────────────────────────────────────
+btnMultiview.addEventListener('click', toggleMultiView);
+
+function toggleMultiView() {
+  multiViewActive = !multiViewActive;
+  if (multiViewActive) {
+    videoWrapper.style.display = 'none';
+    mvGrid.style.display       = 'grid';
+    btnMultiview.textContent   = '▣ Single View';
+    btnMultiview.classList.replace('btn-secondary', 'btn-primary');
+    // Auto-assign active video to slot 0 if nothing assigned yet
+    if (activeVideoIdx >= 0 && !multiSlots[0]) assignSlot(0, activeVideoIdx);
+  } else {
+    mvGrid.style.display       = 'none';
+    videoWrapper.style.display = '';
+    btnMultiview.textContent   = '⊞ Multi-View';
+    btnMultiview.classList.replace('btn-primary', 'btn-secondary');
+    // Restore main video to active video
+    if (activeVideoIdx >= 0) {
+      video.src   = URL.createObjectURL(videos[activeVideoIdx].file);
+      video.muted = false;
+    }
+    mvPicker.style.display = 'none';
+  }
+}
+
+function assignSlot(slotIdx, vidIdx) {
+  const vid = videos[vidIdx];
+  multiSlots[slotIdx] = vid;
+  const el  = mvVideoEls[slotIdx];
+  el.src    = URL.createObjectURL(vid.file);
+  el.muted  = true;
+  el.addEventListener('loadedmetadata', () => { el.currentTime = video.currentTime; }, { once: true });
+
+  const cell = document.getElementById(`mv-cell-${slotIdx}`);
+  cell.classList.add('assigned');
+  document.getElementById(`mv-lbl-${slotIdx}`).textContent =
+    vid.filename.replace(/\.[^/.]+$/, '');
+
+  // Slot 0 drives the timeline — keep main video and thumbnail in sync
+  if (slotIdx === 0) {
+    const objUrl  = URL.createObjectURL(vid.file);
+    video.src     = objUrl;
+    video.muted   = true;
+    thumbVideo.src = objUrl;
+    video.addEventListener('loadedmetadata', () => {
+      outPoint = video.duration;
+      updateMarkerInputs();
+      timeTotal.textContent = fmt(video.duration);
+      drawTimeline();
+    }, { once: true });
+  }
+}
+
+// Sync multi-view slots when main video (timeline master) moves
+video.addEventListener('seeked', () => {
+  if (!multiViewActive) return;
+  mvVideoEls.forEach((el, i) => { if (multiSlots[i] && el.src) el.currentTime = video.currentTime; });
+});
+video.addEventListener('play', () => {
+  if (!multiViewActive) return;
+  mvVideoEls.forEach((el, i) => { if (multiSlots[i] && el.src) el.play().catch(() => {}); });
+});
+video.addEventListener('pause', () => {
+  if (!multiViewActive) return;
+  mvVideoEls.forEach((el, i) => { if (el.src) el.pause(); });
+});
+
+// Assign-button and empty-cell click → open picker
+mvGrid.addEventListener('click', e => {
+  const btn  = e.target.closest('.mv-assign-btn');
+  const cell = e.target.closest('.mv-cell');
+  if (!cell) return;
+  const slot = parseInt(cell.id.replace('mv-cell-', ''));
+  const isUnassigned = !cell.classList.contains('assigned') && !btn;
+  if (btn || isUnassigned) openMvPicker(slot, cell);
+});
+
+function openMvPicker(slotIdx, cell) {
+  if (!videos.length) { setStatus('error', 'Import some videos first.'); return; }
+  mvPickerSlot = slotIdx;
+  const list   = document.getElementById('mv-picker-list');
+  list.innerHTML = '';
+  videos.forEach((vid, i) => {
+    const item = document.createElement('div');
+    item.className   = 'mv-picker-item';
+    item.textContent = vid.filename;
+    item.addEventListener('click', () => {
+      assignSlot(slotIdx, i);
+      mvPicker.style.display = 'none';
+    });
+    list.appendChild(item);
+  });
+  // Position picker near the cell
+  const r = cell.getBoundingClientRect();
+  const g = mvGrid.getBoundingClientRect();
+  mvPicker.style.left = (r.left - g.left + 4) + 'px';
+  mvPicker.style.top  = (r.top  - g.top  + 4) + 'px';
+  mvPicker.style.display = 'block';
+}
+
+document.getElementById('mv-picker-cancel').addEventListener('click', () => {
+  mvPicker.style.display = 'none';
+});
+
+// Clear a slot (✕ button)
+mvGrid.addEventListener('click', e => {
+  const btn = e.target.closest('.mv-clear-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  clearSlot(parseInt(btn.dataset.slot));
+});
+
+function clearSlot(slotIdx) {
+  multiSlots[slotIdx] = null;
+  const el = mvVideoEls[slotIdx];
+  el.pause(); el.src = '';
+  const cell = document.getElementById(`mv-cell-${slotIdx}`);
+  cell.classList.remove('assigned');
+  document.getElementById(`mv-lbl-${slotIdx}`).textContent = `Slot ${slotIdx + 1}`;
+}
+
+// ─────────────────────────────────────────────
+// DRAG FROM LIBRARY → MULTI-VIEW SLOT
+// ─────────────────────────────────────────────
+mvGrid.addEventListener('dragover', e => {
+  const cell = e.target.closest('.mv-cell');
+  if (!cell) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  document.querySelectorAll('.mv-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+  cell.classList.add('drag-over');
+});
+mvGrid.addEventListener('dragleave', e => {
+  const cell = e.target.closest('.mv-cell');
+  if (cell) cell.classList.remove('drag-over');
+});
+mvGrid.addEventListener('drop', e => {
+  e.preventDefault();
+  const cell = e.target.closest('.mv-cell');
+  if (!cell) return;
+  cell.classList.remove('drag-over');
+  const vidIdx = parseInt(e.dataTransfer.getData('text/plain'));
+  const slot   = parseInt(cell.id.replace('mv-cell-', ''));
+  if (!isNaN(vidIdx) && videos[vidIdx]) assignSlot(slot, vidIdx);
+});
+
+// ─────────────────────────────────────────────
+// DRAW MODE
+// ─────────────────────────────────────────────
+const drawCanvas  = document.getElementById('draw-canvas');
+const drawCtx     = drawCanvas.getContext('2d');
+const drawToolbar = document.getElementById('draw-toolbar');
+const btnDraw     = document.getElementById('btn-draw');
+
+let drawActive  = false;
+let drawTool    = 'pen';
+let drawColor   = '#ff3b3b';
+let drawSize    = 4;
+let drawing     = false;
+let drawStart   = { x: 0, y: 0 };
+let drawHistory = [];   // snapshots for undo
+let penPoints   = [];
+let textInput   = null;
+
+function syncDrawCanvas() {
+  const r = videoWrapper.getBoundingClientRect();
+  if (drawCanvas.width !== r.width || drawCanvas.height !== r.height) {
+    // Preserve content through resize
+    const snap = drawCtx.getImageData(0, 0, drawCanvas.width || 1, drawCanvas.height || 1);
+    drawCanvas.width  = r.width;
+    drawCanvas.height = r.height;
+    drawCtx.putImageData(snap, 0, 0);
+  }
+}
+
+btnDraw.addEventListener('click', () => {
+  drawActive = !drawActive;
+  syncDrawCanvas();
+  drawCanvas.classList.toggle('active', drawActive);
+  drawToolbar.style.display = drawActive ? 'flex' : 'none';
+  btnDraw.classList.toggle('btn-primary',   drawActive);
+  btnDraw.classList.toggle('btn-secondary', !drawActive);
+  if (drawActive) video.removeAttribute('controls'); else video.setAttribute('controls','');
+});
+
+// Tool buttons
+drawToolbar.querySelectorAll('.draw-tool').forEach(btn => {
+  btn.addEventListener('click', () => {
+    drawTool = btn.dataset.tool;
+    drawToolbar.querySelectorAll('.draw-tool').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawCanvas.style.cursor = drawTool === 'text' ? 'text' : drawTool === 'eraser' ? 'cell' : 'crosshair';
+  });
+});
+
+// Color swatches
+drawToolbar.querySelectorAll('.draw-color-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    drawColor = sw.dataset.color;
+    drawToolbar.querySelectorAll('.draw-color-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    document.getElementById('draw-custom-color').value = drawColor;
+  });
+});
+drawToolbar.querySelector('.draw-color-swatch').classList.add('active');
+document.getElementById('draw-custom-color').addEventListener('input', e => {
+  drawColor = e.target.value;
+  drawToolbar.querySelectorAll('.draw-color-swatch').forEach(s => s.classList.remove('active'));
+});
+
+// Size
+document.getElementById('draw-size').addEventListener('input', e => {
+  drawSize = parseInt(e.target.value);
+  document.getElementById('draw-size-label').textContent = drawSize;
+});
+
+// Undo
+document.getElementById('btn-draw-undo').addEventListener('click', () => {
+  const dc = getActiveDrawCtx(), ac = getActiveDrawCanvas();
+  if (drawHistory.length) { dc.putImageData(drawHistory.pop(), 0, 0); }
+  else                    { dc.clearRect(0, 0, ac.width, ac.height); }
+});
+
+// Clear
+document.getElementById('btn-draw-clear').addEventListener('click', () => {
+  const dc = getActiveDrawCtx(), ac = getActiveDrawCanvas();
+  drawHistory.push(dc.getImageData(0, 0, ac.width || 1, ac.height || 1));
+  dc.clearRect(0, 0, ac.width, ac.height);
+});
+
+// Save PNG (video frame + drawing)
+document.getElementById('btn-draw-save').addEventListener('click', () => {
+  const off  = document.createElement('canvas');
+  off.width  = video.videoWidth  || drawCanvas.width;
+  off.height = video.videoHeight || drawCanvas.height;
+  const oc   = off.getContext('2d');
+  oc.drawImage(video, 0, 0, off.width, off.height);
+  // Scale drawing onto the frame
+  oc.drawImage(drawCanvas, 0, 0, off.width, off.height);
+  const ts   = new Date().toISOString().replace(/[:.]/g,'-').slice(0,-5);
+  off.toBlob(blob => triggerDownload(blob, `frame_${ts}.png`), 'image/png');
+});
+
+// ── Drawing events ────────────────────────────
+function canvasXY(e, canvas) {
+  const r   = (canvas || drawCanvas).getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function pushHistory() {
+  const ac = getActiveDrawCanvas();
+  drawHistory.push(getActiveDrawCtx().getImageData(0, 0, ac.width || 1, ac.height || 1));
+  if (drawHistory.length > 30) drawHistory.shift();
+}
+
+function applyStroke(dc) {
+  const c = dc || getActiveDrawCtx();
+  c.strokeStyle = drawColor; c.fillStyle = drawColor;
+  c.lineWidth   = drawSize;  c.lineCap   = 'round'; c.lineJoin = 'round';
+}
+
+// Generic draw event handler (works for both single-view canvas and mv canvases)
+function attachDrawEvents(canvas) {
+  canvas.addEventListener('mousedown', e => {
+    if (!drawActive) return;
+    if (multiViewActive && mvDrawTarget < 0) return; // no mv slot selected
+    const dc = getActiveDrawCtx();
+    if (drawTool === 'text') { placeText(canvasXY(e, canvas)); return; }
+    pushHistory();
+    drawing   = true;
+    drawStart = canvasXY(e, canvas);
+    penPoints = [drawStart];
+    if (drawTool === 'pen' || drawTool === 'eraser') {
+      dc.beginPath(); dc.moveTo(drawStart.x, drawStart.y);
+    }
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const dc = getActiveDrawCtx();
+    const p  = canvasXY(e, canvas);
+    if (drawTool === 'pen') {
+      applyStroke(dc); dc.lineTo(p.x, p.y); dc.stroke(); penPoints.push(p);
+    } else if (drawTool === 'eraser') {
+      dc.save(); dc.globalCompositeOperation = 'destination-out';
+      dc.lineWidth = drawSize * 3; dc.lineTo(p.x, p.y); dc.stroke(); dc.restore();
+    } else {
+      const snap = drawHistory[drawHistory.length - 1];
+      const ac   = getActiveDrawCanvas();
+      if (snap) dc.putImageData(snap, 0, 0);
+      applyStroke(dc); drawShape(dc, drawTool, drawStart, p);
+    }
+  });
+  canvas.addEventListener('mouseup', e => {
+    if (!drawing) return;
+    drawing = false;
+    const dc = getActiveDrawCtx();
+    const p  = canvasXY(e, canvas);
+    if (drawTool !== 'pen' && drawTool !== 'eraser') {
+      applyStroke(dc); drawShape(dc, drawTool, drawStart, p);
+    }
+  });
+  canvas.addEventListener('mouseleave', () => { drawing = false; });
+}
+const mvDrawCanvases = [0,1,2,3].map(i => document.getElementById(`mv-dc-${i}`));
+let   mvDrawTarget   = -1;
+attachDrawEvents(drawCanvas);
+mvDrawCanvases.forEach(attachDrawEvents);
+
+function drawShape(dc, tool, a, b) {
+  const w = b.x - a.x, h = b.y - a.y;
+  dc.beginPath();
+  if (tool === 'rect') {
+    dc.strokeRect(a.x, a.y, w, h);
+  } else if (tool === 'circle') {
+    const rx = Math.abs(w)/2, ry = Math.abs(h)/2;
+    dc.ellipse(a.x + w/2, a.y + h/2, rx, ry, 0, 0, Math.PI*2); dc.stroke();
+  } else if (tool === 'line') {
+    dc.moveTo(a.x, a.y); dc.lineTo(b.x, b.y); dc.stroke();
+  } else if (tool === 'arrow') {
+    dc.moveTo(a.x, a.y); dc.lineTo(b.x, b.y); dc.stroke();
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    const hs  = Math.max(drawSize * 3, 12);
+    dc.beginPath();
+    dc.moveTo(b.x, b.y);
+    dc.lineTo(b.x - hs * Math.cos(ang - 0.45), b.y - hs * Math.sin(ang - 0.45));
+    dc.lineTo(b.x - hs * Math.cos(ang + 0.45), b.y - hs * Math.sin(ang + 0.45));
+    dc.closePath(); dc.fill();
+  }
+}
+
+function placeText(pos) {
+  if (textInput) { textInput.blur(); return; }
+  const container = multiViewActive && mvDrawTarget >= 0
+    ? document.getElementById(`mv-cell-${mvDrawTarget}`)
+    : videoWrapper;
+  textInput = document.createElement('input');
+  Object.assign(textInput.style, {
+    position:'absolute', left:pos.x+'px', top:pos.y+'px',
+    background:'transparent', border:'1px dashed '+drawColor,
+    color:drawColor, fontSize:(drawSize*4+8)+'px',
+    outline:'none', minWidth:'80px', padding:'2px', zIndex:'50',
+  });
+  container.appendChild(textInput);
+  textInput.focus();
+  textInput.addEventListener('blur', () => {
+    if (textInput.value.trim()) {
+      pushHistory();
+      const dc = getActiveDrawCtx();
+      applyStroke(dc);
+      dc.font = `${drawSize*4+8}px sans-serif`;
+      dc.fillText(textInput.value, pos.x, pos.y + drawSize*4+8);
+    }
+    container.removeChild(textInput);
+    textInput = null;
+  });
+  textInput.addEventListener('keydown', e => { if (e.key==='Enter') textInput.blur(); e.stopPropagation(); });
+}
+
+// ─────────────────────────────────────────────
+// IN / OUT POINTS
+// ─────────────────────────────────────────────
+btnSetIn.addEventListener('click',  () => setIn(video.currentTime));
+btnSetOut.addEventListener('click', () => setOut(video.currentTime));
+
+function setIn(t) {
+  inPoint = clamp(t, 0, video.duration);
+  if (inPoint >= outPoint) outPoint = Math.min(video.duration, inPoint + 0.5);
+  updateMarkerInputs();
+  drawTimeline();
+}
+
+function setOut(t) {
+  outPoint = clamp(t, 0, video.duration);
+  if (outPoint <= inPoint) inPoint = Math.max(0, outPoint - 0.5);
+  updateMarkerInputs();
+  drawTimeline();
+}
+
+function updateMarkerInputs() {
+  inInput.value  = fmt(inPoint);
+  outInput.value = fmt(outPoint);
+}
+
+inInput.addEventListener('change', () => {
+  const t = parseTime(inInput.value);
+  if (t !== null) { inPoint = clamp(t, 0, video.duration); inInput.value = fmt(inPoint); drawTimeline(); }
+});
+outInput.addEventListener('change', () => {
+  const t = parseTime(outInput.value);
+  if (t !== null) { outPoint = clamp(t, 0, video.duration); outInput.value = fmt(outPoint); drawTimeline(); }
+});
+
+// ─────────────────────────────────────────────
+// SEGMENTS
+// ─────────────────────────────────────────────
+btnAdd.addEventListener('click', addSegment);
+
+function addSegment() {
+  if (inPoint >= outPoint) { setStatus('error', 'Start must be before End'); return; }
+
+  if (multiViewActive) {
+    // Add one segment per assigned slot, all with the same timestamps
+    const assigned = multiSlots.map((v,i) => ({v,i})).filter(x => x.v);
+    if (!assigned.length) { setStatus('error', 'Assign at least one video to a slot first.'); return; }
+    const groupNum = segments.length + 1;
+    const labels   = ['TL','TR','BL','BR'];
+    assigned.forEach(({v, i}) => {
+      const base = v.filename.replace(/\.[^/.]+$/, '');
+      segments.push({ id: Date.now() + i, start: inPoint, end: outPoint,
+        name: `${base}_segment_${groupNum}_${labels[i]}`,
+        _vid: v, srcName: v.filename,
+        format: 'original', gifFps: 10, gifWidth: 480, crf: 25, compress: true, notes: '' });
+    });
+    renderSegments(); drawTimeline();
+    setStatus('ready', `Added ${assigned.length} angle segments (${fmt(inPoint)} → ${fmt(outPoint)})`);
+    return;
+  }
+
+  if (activeVideoIdx < 0 || !video.src) return;
+  const vid  = videos[activeVideoIdx];
+  const base = vid.filename.replace(/\.[^/.]+$/, '');
+  segments.push({ id: Date.now(), start: inPoint, end: outPoint,
+    name: `${base}_segment_${segments.length + 1}`,
+    _vid: vid, srcName: vid.filename,
+    format: 'original', gifFps: 10, gifWidth: 480, crf: 25, compress: true, notes: '' });
+  renderSegments();
+  drawTimeline();
+  setStatus('ready', `Segment ${segments.length} added  (${fmt(inPoint)} → ${fmt(outPoint)})`);
+}
+
+function removeSegment(id) {
+  segments = segments.filter(s => s.id !== id);
+  renderSegments();
+  drawTimeline();
+}
+
+function renderSegments() {
+  const savedScroll = segmentsList.scrollTop;
+  document.querySelectorAll('.segment-card').forEach(el => el.remove());
+  const has = segments.length > 0;
+  emptyState.style.display                                         = has ? 'none'  : 'block';
+  btnExportAll.style.display                                       = has ? 'block' : 'none';
+  document.getElementById('btn-export-notes').style.display        = has ? 'block' : 'none';
+  document.getElementById('btn-notion-preset').style.display       = has ? 'block' : 'none';
+  combineRow.style.display                                         = has ? 'flex'  : 'none';
+  segCount.textContent            = `${segments.length} segment${segments.length !== 1 ? 's' : ''}`;
+
+  segments.forEach((seg, idx) => {
+    const color = PALETTE[idx % PALETTE.length];
+    const dur   = seg.end - seg.start;
+    const card  = document.createElement('div');
+    card.className  = 'segment-card';
+    card.dataset.id = seg.id;
+    card.style.setProperty('--seg-color', color);
+
+    if (seg._orphaned) card.classList.add('seg-orphaned');
+    card.innerHTML = `
+      <div class="seg-row1">
+        <div class="seg-drag-handle" title="Drag to reorder">⠿</div>
+        <input type="checkbox" class="seg-check" ${selectedSegIds.has(seg.id)?'checked':''}>
+        <div class="seg-num" style="background:${color}">${idx + 1}</div>
+        <input class="seg-name" type="text" value="${esc(seg.name)}" placeholder="Name">
+        <button class="seg-remove" title="Remove">×</button>
+      </div>
+      ${seg._orphaned ? `<div class="seg-orphaned-badge">⚠ Re-import "${esc(seg.srcName||'video')}" to enable export</div>` : ''}
+      <div class="seg-times">
+        <div class="seg-time-field">
+          <label>Start</label>
+          <input type="text" class="time-input seg-start" value="${fmt(seg.start)}">
+        </div>
+        <div class="seg-time-field">
+          <label>End</label>
+          <input type="text" class="time-input seg-end" value="${fmt(seg.end)}">
+        </div>
+        <span class="seg-dur">${fmt(dur)}</span>
+      </div>
+      ${videos.length > 1 ? `<div class="seg-source">From: ${esc(seg.srcName || '')}</div>` : ''}
+      <div class="seg-options">
+        <select class="seg-fmt-select">
+          <option value="original" ${seg.format==='original'?'selected':''}>Same as source</option>
+          <option value="mp4"      ${seg.format==='mp4'?'selected':''}>MP4</option>
+          <option value="gif"      ${seg.format==='gif'?'selected':''}>GIF</option>
+          <option value="webm"     ${seg.format==='webm'?'selected':''}>WebM</option>
+        </select>
+        <span class="gif-opts" style="display:${seg.format==='gif'?'flex':'none'};gap:4px;align-items:center">
+          <input type="number" class="gif-fps"   value="${seg.gifFps}"   min="1"   max="30"   style="width:40px" title="FPS">
+          <span style="font-size:10px;color:var(--text2)">fps</span>
+          <input type="number" class="gif-width" value="${seg.gifWidth}" min="100" max="1920" style="width:50px" title="Width px">
+          <span style="font-size:10px;color:var(--text2)">px</span>
+        </span>
+        <label class="compress-label" style="margin-left:auto">
+          <input type="checkbox" class="compress-check" ${seg.compress!==false?'checked':''}>
+          CRF <span class="crf-val">${seg.crf||25}</span>
+        </label>
+        <input type="range" class="crf-slider" min="18" max="35" step="1" value="${seg.crf||25}"
+               style="${seg.compress===false?'opacity:.35;pointer-events:none':''}">
+        <span class="crf-hint">${crfHint(seg.crf||25)}</span>
+      </div>
+      <button class="seg-notes-toggle">${seg.notes ? '📝 Notes ▾' : '📝 Notes ▸'}</button>
+      <textarea class="seg-notes" placeholder="Step notes…" style="display:${seg.notes?'block':'none'}">${esc(seg.notes||'')}</textarea>
+      <div class="seg-actions">
+        <button class="btn btn-secondary btn-preview">⏵ Preview</button>
+        <button class="btn btn-primary  btn-export">↓ Export</button>
+      </div>
+    `;
+
+    // Click card (not on controls) → seek to segment start
+    card.addEventListener('click', e => {
+      if (['BUTTON','INPUT','SELECT','LABEL'].includes(e.target.tagName)) return;
+      video.currentTime = seg.start;
+      if (multiViewActive) mvVideoEls.forEach((el,i)=>{ if(multiSlots[i]&&el.src) el.currentTime=seg.start; });
+    });
+    card.style.cursor = 'pointer';
+
+    card.querySelector('.seg-remove').addEventListener('click', e => { e.stopPropagation(); removeSegment(seg.id); });
+
+    // Checkbox selection
+    const segCheck = card.querySelector('.seg-check');
+    segCheck.addEventListener('change', () => {
+      if (segCheck.checked) selectedSegIds.add(seg.id);
+      else selectedSegIds.delete(seg.id);
+      updateSelCount();
+    });
+
+    const fmtSelect   = card.querySelector('.seg-fmt-select');
+    const gifOpts     = card.querySelector('.gif-opts');
+    const crfSlider   = card.querySelector('.crf-slider');
+    const crfValSpan  = card.querySelector('.crf-val');
+    const crfHintSpan = card.querySelector('.crf-hint');
+    const compCheck   = card.querySelector('.compress-check');
+    const notesToggle = card.querySelector('.seg-notes-toggle');
+    const notesArea   = card.querySelector('.seg-notes');
+
+    fmtSelect.addEventListener('change', () => {
+      seg.format = fmtSelect.value;
+      gifOpts.style.display = seg.format === 'gif' ? 'flex' : 'none';
+    });
+    compCheck.addEventListener('change', () => {
+      seg.compress = compCheck.checked;
+      crfSlider.style.opacity       = seg.compress ? '1'    : '0.35';
+      crfSlider.style.pointerEvents = seg.compress ? 'auto' : 'none';
+    });
+    crfSlider.addEventListener('input', e => {
+      seg.crf = parseInt(e.target.value);
+      crfValSpan.textContent  = seg.crf;
+      crfHintSpan.textContent = crfHint(seg.crf);
+    });
+    notesToggle.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = notesArea.style.display !== 'none';
+      notesArea.style.display = open ? 'none' : 'block';
+      notesToggle.textContent  = open ? '📝 Notes ▸' : '📝 Notes ▾';
+    });
+    card.querySelector('.gif-fps').addEventListener('change',   e => { seg.gifFps   = Math.max(1,  Math.min(30,   parseInt(e.target.value) || 10)); e.target.value = seg.gifFps; });
+    card.querySelector('.gif-width').addEventListener('change', e => { seg.gifWidth = Math.max(100, Math.min(1920, parseInt(e.target.value) || 480)); e.target.value = seg.gifWidth; });
+
+    card.querySelector('.seg-name').addEventListener('change',  e => { seg.name  = e.target.value; saveSession(); });
+    card.querySelector('.seg-notes').addEventListener('input',  e => { seg.notes = e.target.value; saveSession(); });
+
+    // Drag-to-reorder
+    const handle = card.querySelector('.seg-drag-handle');
+    handle.addEventListener('mousedown', () => { card.draggable = true; });
+    handle.addEventListener('mouseup',   () => { card.draggable = false; });
+    card.addEventListener('dragstart', e => {
+      draggingSegIdx = idx;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      draggingSegIdx = -1;
+      card.classList.remove('dragging');
+      document.querySelectorAll('.drag-over-seg').forEach(c => c.classList.remove('drag-over-seg'));
+    });
+    card.addEventListener('dragover', e => {
+      if (draggingSegIdx < 0 || draggingSegIdx === idx) return;
+      e.preventDefault();
+      document.querySelectorAll('.drag-over-seg').forEach(c => c.classList.remove('drag-over-seg'));
+      card.classList.add('drag-over-seg');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over-seg');
+      if (draggingSegIdx < 0 || draggingSegIdx === idx) return;
+      const moved = segments.splice(draggingSegIdx, 1)[0];
+      const dest  = draggingSegIdx < idx ? idx - 1 : idx;
+      segments.splice(dest, 0, moved);
+      draggingSegIdx = -1;
+      renderSegments(); drawTimeline();
+    });
+
+    // Pre-fetch thumbnail into cache, then show on hover
+    loadSegmentThumbnail(seg);
+    card.addEventListener('mouseenter', () => showSegThumb(seg, card));
+    card.addEventListener('mouseleave', hideSegThumb);
+
+    card.querySelector('.seg-start').addEventListener('change', e => {
+      const t = parseTime(e.target.value);
+      if (t !== null) {
+        seg.start = clamp(t, 0, seg.end - 0.1);
+        e.target.value = fmt(seg.start);
+        card.querySelector('.seg-dur').textContent = fmt(seg.end - seg.start);
+        drawTimeline();
+      }
+    });
+
+    card.querySelector('.seg-end').addEventListener('change', e => {
+      const t = parseTime(e.target.value);
+      if (t !== null) {
+        seg.end = clamp(t, seg.start + 0.1, video.duration);
+        e.target.value = fmt(seg.end);
+        card.querySelector('.seg-dur').textContent = fmt(seg.end - seg.start);
+        drawTimeline();
+      }
+    });
+
+    let previewStop = null;
+    card.querySelector('.btn-preview').addEventListener('click', () => {
+      if (previewStop) { clearInterval(previewStop); previewStop = null; }
+      video.currentTime = seg.start;
+      video.play();
+      previewStop = setInterval(() => {
+        if (video.currentTime >= seg.end) {
+          video.pause();
+          clearInterval(previewStop);
+          previewStop = null;
+        }
+      }, 100);
+    });
+
+    card.querySelector('.btn-export').addEventListener('click', () => exportSegment(seg));
+
+    segmentsList.appendChild(card);
+  });
+  segmentsList.scrollTop = savedScroll;
+  saveSession();
+}
+
+// ─────────────────────────────────────────────
+// TIMELINE CANVAS
+// ─────────────────────────────────────────────
+const ro = new ResizeObserver(() => {
+  tlCanvas.width = tlCanvas.offsetWidth;
+  drawTimeline();
+});
+ro.observe(tlCanvas);
+
+video.addEventListener('timeupdate', () => {
+  timeCurrent.textContent = fmt(video.currentTime);
+  // Auto-pan when zoomed so playhead stays visible
+  if (tlZoom > 1 && video.duration) {
+    const visDur = video.duration / tlZoom;
+    const margin = visDur * 0.12;
+    if (video.currentTime > tlOffset + visDur - margin)
+      tlOffset = clamp(video.currentTime - visDur + margin, 0, video.duration - visDur);
+    else if (video.currentTime < tlOffset + margin && tlOffset > 0)
+      tlOffset = clamp(video.currentTime - margin, 0, video.duration - visDur);
+  }
+  drawTimeline();
+});
+
+function drawTimeline() {
+  if (!video.duration) return;
+  const W = tlCanvas.width, H = tlCanvas.height;
+  const dur    = video.duration;
+  const visStart = tlOffset;
+  const visDur   = dur / tlZoom;
+  const x = t => ((t - visStart) / visDur) * W;
+
+  tlCtx.clearRect(0, 0, W, H);
+  const dark = isDark();
+
+  // track bg
+  tlCtx.fillStyle = dark ? 'rgba(10,13,24,0.92)' : 'rgba(255,255,255,0.55)';
+  tlCtx.fillRect(0, 16, W, 28);
+
+  // segment bands
+  const activeVid = videos[activeVideoIdx];
+  segments.filter(s => s._vid === activeVid).forEach((seg, i) => {
+    const c = PALETTE[i % PALETTE.length];
+    const x1 = x(seg.start), x2 = x(seg.end);
+    tlCtx.fillStyle = c + '55';
+    tlCtx.fillRect(x1, 16, x2 - x1, 28);
+    tlCtx.fillStyle = c;
+    tlCtx.fillRect(x1, 16, 2, 28);
+    tlCtx.fillRect(x2 - 2, 16, 2, 28);
+    if (x2 - x1 > 14) {
+      tlCtx.fillStyle = c;
+      tlCtx.font = '10px system-ui';
+      tlCtx.textAlign = 'left';
+      tlCtx.fillText(i + 1, x1 + 4, 34);
+    }
+  });
+
+  // in/out selection
+  const ix = x(inPoint), ox = x(outPoint);
+  tlCtx.fillStyle = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  tlCtx.fillRect(ix, 16, ox - ix, 28);
+
+  // in marker — green
+  tlCtx.fillStyle = dark ? '#4ff78e' : '#1e7a3c';
+  tlCtx.fillRect(ix, 14, 2, 32);
+  tlCtx.beginPath(); tlCtx.moveTo(ix + 2, 14); tlCtx.lineTo(ix + 10, 18); tlCtx.lineTo(ix + 2, 22); tlCtx.closePath(); tlCtx.fill();
+
+  // out marker — orange
+  tlCtx.fillStyle = dark ? '#f7914f' : '#c05810';
+  tlCtx.fillRect(ox - 2, 14, 2, 32);
+  tlCtx.beginPath(); tlCtx.moveTo(ox - 2, 14); tlCtx.lineTo(ox - 10, 18); tlCtx.lineTo(ox - 2, 22); tlCtx.closePath(); tlCtx.fill();
+
+  // time ticks — scale tick interval to visible window
+  const tickSec = visDur <= 10 ? 0.5 : visDur <= 30 ? 1 : visDur <= 120 ? 5 : visDur <= 600 ? 10 : 30;
+  const tickStart = Math.floor(visStart / tickSec) * tickSec;
+  for (let t = tickStart; t <= visStart + visDur; t += tickSec) {
+    const tx = x(t);
+    tlCtx.fillStyle = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)';
+    tlCtx.fillRect(tx, 46, 1, 5);
+    if (t % (tickSec * 5) === 0 || tickSec >= 10) {
+      tlCtx.fillStyle = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)';
+      tlCtx.font = '10px monospace';
+      tlCtx.textAlign = 'center';
+      tlCtx.fillText(fmtShort(t), tx, 58);
+    }
+  }
+
+  // playhead
+  const px = x(video.currentTime);
+  tlCtx.fillStyle = dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)';
+  tlCtx.globalAlpha = 1;
+  tlCtx.fillRect(px - 1, 0, 2, H);
+  tlCtx.beginPath(); tlCtx.moveTo(px, 0); tlCtx.lineTo(px - 6, 11); tlCtx.lineTo(px + 6, 11); tlCtx.closePath(); tlCtx.fill();
+  tlCtx.globalAlpha = 1;
+}
+
+// click + drag to seek
+tlCanvas.addEventListener('mousedown', e => {
+  const r      = tlCanvas.getBoundingClientRect();
+  const pxToT  = px => clamp(tlOffset + ((px - r.left) / r.width) * (video.duration / tlZoom), 0, video.duration);
+  const t      = pxToT(e.clientX);
+  video.currentTime = t;
+
+  // Highlight card if click lands on a segment band, deselect if clicking empty space
+  const activeVid = videos[activeVideoIdx];
+  const hit = segments.filter(s => s._vid === activeVid).find(s => t >= s.start && t <= s.end);
+  if (hit) scrollToSegment(hit.id);
+  else clearTimelineSelection();
+
+  const mv = ev => { video.currentTime = pxToT(ev.clientX); };
+  const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+  document.addEventListener('mousemove', mv);
+  document.addEventListener('mouseup', up);
+});
+
+let timelineSelectedId = null;
+
+function scrollToSegment(id) {
+  // Deselect previous
+  document.querySelectorAll('.seg-selected').forEach(c => c.classList.remove('seg-selected'));
+  if (id === timelineSelectedId) { timelineSelectedId = null; return; } // toggle off
+  timelineSelectedId = id;
+  const card = segmentsList.querySelector(`[data-id="${id}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  card.classList.add('seg-selected');
+}
+
+function clearTimelineSelection() {
+  document.querySelectorAll('.seg-selected').forEach(c => c.classList.remove('seg-selected'));
+  timelineSelectedId = null;
+}
+
+// ─────────────────────────────────────────────
+// EXPORT  (server-side ffmpeg — fast, no browser memory issues)
+// ─────────────────────────────────────────────
+
+function exportSegment(seg) {
+  exportQueue = exportQueue.then(() => runExport(seg));
+}
+
+async function runExport(seg) {
+  try {
+    if (!seg._vid) throw new Error('Segment has no source video.');
+    const token = await seg._vid.uploadPromise;
+
+    setStatus('busy', `Exporting "${seg.name}"…`);
+    showProgress(50);
+
+    const resp = await fetch('/api/trim', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        start:    seg.start,
+        duration: seg.end - seg.start,
+        name:     seg.name,
+        format:   seg.format   || 'original',
+        crf:      seg.crf      || 25,
+        compress: seg.compress !== false,
+        gifFps:   seg.gifFps   || 10,
+        gifWidth: seg.gifWidth || 480,
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || resp.statusText);
+    }
+
+    const blob     = await resp.blob();
+    const outExt   = { gif:'gif', mp4:'mp4', webm:'webm' }[seg.format] || getExt(seg._vid.filename);
+    const filename = sanitize(seg.name) + '.' + outExt;
+    triggerDownload(blob, filename);
+    setStatus('ready', `Downloaded: ${filename}`);
+    showProgress(0);
+
+  } catch (err) {
+    console.error(err);
+    setStatus('error', 'Export failed: ' + err.message);
+    showProgress(0);
+  }
+}
+
+btnExportAll.addEventListener('click', () => {
+  setStatus('busy', `Queuing ${segments.length} export${segments.length !== 1 ? 's' : ''}…`);
+  segments.forEach(seg => exportSegment(seg));
+});
+
+// ─────────────────────────────────────────────
+// COMBINE
+// ─────────────────────────────────────────────
+btnCombine.addEventListener('click', async () => {
+  if (!segments.length) return;
+  try {
+    setStatus('busy', 'Waiting for uploads to complete…');
+    const uniqueVids = [...new Set(segments.map(s => s._vid))];
+    await Promise.all(uniqueVids.map(v => v.uploadPromise));
+
+    const fmt = combineFmt.value;
+    setStatus('busy', `Combining ${segments.length} segments into ${fmt.toUpperCase()}…`);
+    showProgress(20);
+
+    const resp = await fetch('/api/combine', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        segments: segments.map(s => ({
+          token:    s._vid.token,
+          start:    s.start,
+          duration: s.end - s.start,
+          name:     s.name,
+        })),
+        format:       fmt,
+        combinedName: 'combined',
+      }),
+    });
+
+    showProgress(80);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || resp.statusText);
+    }
+
+    const blob = await resp.blob();
+    triggerDownload(blob, `combined.${fmt}`);
+    setStatus('ready', `Combined video downloaded: combined.${fmt}`);
+    showProgress(0);
+
+  } catch (err) {
+    console.error(err);
+    setStatus('error', 'Combine failed: ' + err.message);
+    showProgress(0);
+  }
+});
+
+// ─────────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (!video.src) return;
+  if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+  switch (e.key) {
+    case ' ':       e.preventDefault(); video.paused ? video.play() : video.pause(); break;
+    case 'q': case 'Q': setIn(video.currentTime);  break;
+    case 'e': case 'E': setOut(video.currentTime); break;
+    case 'Enter':   addSegment(); break;
+    case 'ArrowLeft':  video.currentTime = Math.max(0, video.currentTime - (e.shiftKey ? 10 : 1)); break;
+    case 'ArrowRight': video.currentTime = Math.min(video.duration, video.currentTime + (e.shiftKey ? 10 : 1)); break;
+    case 'j':       video.currentTime = Math.max(0, video.currentTime - 5); break;
+    case 'k':       video.paused ? video.play() : video.pause(); break;
+    case 'l':       video.currentTime = Math.min(video.duration, video.currentTime + 5); break;
+    case 'f': case 'F': if (video.src) video.requestFullscreen?.(); break;
+    case ',':       video.pause(); video.currentTime = Math.max(0, video.currentTime - 1/30); break;
+    case '.':       video.pause(); video.currentTime = Math.min(video.duration, video.currentTime + 1/30); break;
+    case 'z':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (drawActive) {
+          document.getElementById('btn-draw-undo').click();
+        } else if (segments.length) {
+          const last = segments[segments.length - 1];
+          removeSegment(last.id);
+          setStatus('ready', 'Undid last segment');
+        }
+      }
+      break;
+  }
+});
+
+// ─────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────
+function fmt(s) {
+  if (isNaN(s) || s == null) return '0:00.0';
+  const m  = Math.floor(s / 60);
+  const ss = Math.floor(s % 60);
+  const ds = Math.floor((s % 1) * 10);
+  return `${m}:${String(ss).padStart(2,'0')}.${ds}`;
+}
+function fmtShort(s) {
+  return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+}
+function parseTime(str) {
+  str = str.trim();
+  const m1 = str.match(/^(\d+):(\d+)(?:[.,](\d+))?$/);
+  if (m1) return +m1[1]*60 + +m1[2] + (m1[3] ? parseFloat('0.'+m1[3]) : 0);
+  const m2 = str.match(/^(\d+(?:[.,]\d+)?)$/);
+  if (m2) return parseFloat(m2[1].replace(',','.'));
+  return null;
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function getExt(name) {
+  const e = name.split('.').pop().toLowerCase();
+  return ['mp4','mov','webm','avi','mkv','m4v'].includes(e) ? e : 'mp4';
+}
+function mimeFor(ext) {
+  return ({ mp4:'video/mp4', mov:'video/quicktime', webm:'video/webm', avi:'video/x-msvideo', mkv:'video/x-matroska', m4v:'video/mp4' })[ext] || 'video/mp4';
+}
+function sanitize(name) {
+  return name.replace(/[^\w\s-]/g,'').replace(/\s+/g,'_').substring(0,60) || 'segment';
+}
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function crfHint(crf) {
+  if (crf <= 20) return 'high quality';
+  if (crf <= 24) return 'good quality';
+  if (crf <= 28) return '< 200 MB';
+  if (crf <= 32) return 'very small';
+  return 'smallest';
+}
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// ─────────────────────────────────────────────
+// PLAYBACK SPEED
+// ─────────────────────────────────────────────
+document.getElementById('speed-select').addEventListener('change', e => {
+  video.playbackRate = parseFloat(e.target.value);
+});
+
+// ─────────────────────────────────────────────
+// TIMELINE ZOOM  (scroll wheel + reset)
+// ─────────────────────────────────────────────
+tlCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (!video.duration) return;
+  const r      = tlCanvas.getBoundingClientRect();
+  const pct    = (e.clientX - r.left) / r.width;
+  const tAtCur = tlOffset + pct * (video.duration / tlZoom);
+  tlZoom       = clamp(tlZoom * (e.deltaY < 0 ? 1.3 : 0.77), 1, 80);
+  const newVis = video.duration / tlZoom;
+  tlOffset     = clamp(tAtCur - pct * newVis, 0, video.duration - newVis);
+  const badge  = document.getElementById('zoom-badge');
+  badge.textContent = tlZoom <= 1 ? '1×' : tlZoom.toFixed(1) + '×';
+  drawTimeline();
+}, { passive: false });
+
+document.getElementById('zoom-badge').addEventListener('click', () => {
+  tlZoom = 1; tlOffset = 0;
+  document.getElementById('zoom-badge').textContent = '1×';
+  drawTimeline();
+});
+
+// ─────────────────────────────────────────────
+// THUMBNAIL SCRUBBING
+// ─────────────────────────────────────────────
+const thumbVideo     = document.getElementById('tl-thumb-video');
+const thumbEl        = document.getElementById('tl-thumb');
+const thumbCanvas    = document.getElementById('tl-thumb-canvas');
+const thumbCtx       = thumbCanvas.getContext('2d');
+const thumbTimeLabel = document.getElementById('tl-thumb-time');
+
+thumbVideo.addEventListener('seeked', () => {
+  thumbCtx.drawImage(thumbVideo, 0, 0, 160, 90);
+});
+
+tlCanvas.addEventListener('mousemove', e => {
+  if (!video.src || !video.duration) return;
+  const r   = tlCanvas.getBoundingClientRect();
+  const pct = (e.clientX - r.left) / r.width;
+  const t   = clamp(tlOffset + pct * (video.duration / tlZoom), 0, video.duration);
+  thumbVideo.currentTime   = t;
+  thumbTimeLabel.textContent = fmt(t);
+  thumbEl.style.left       = (e.clientX - r.left) + 'px';
+  thumbEl.style.display    = 'block';
+});
+
+tlCanvas.addEventListener('mouseleave', () => { thumbEl.style.display = 'none'; });
+
+// ─────────────────────────────────────────────
+// STEP NOTES EXPORT
+// ─────────────────────────────────────────────
+document.getElementById('btn-export-notes').addEventListener('click', () => {
+  const lines = segments.map((seg, i) => {
+    const ts = `${fmt(seg.start)} → ${fmt(seg.end)}`;
+    const notesBlock = seg.notes ? `\n\n${seg.notes}` : '';
+    return `## Step ${i + 1}: ${seg.name}\n**Time:** ${ts}  |  **Duration:** ${fmt(seg.end - seg.start)}${notesBlock}`;
+  });
+  const md = `# π slice — Segment Notes\n_Exported ${new Date().toLocaleString()}_\n\n${lines.join('\n\n---\n\n')}`;
+  triggerDownload(new Blob([md], { type: 'text/markdown' }), 'segment_notes.md');
+});
+
+// ─────────────────────────────────────────────
+// FULLSCREEN  (feature 7)
+// ─────────────────────────────────────────────
+document.getElementById('btn-fullscreen').addEventListener('click', () => {
+  if (video.requestFullscreen) video.requestFullscreen();
+});
+
+// ─────────────────────────────────────────────
+// NOTION PRESET  (feature 6)
+// ─────────────────────────────────────────────
+document.getElementById('btn-notion-preset').addEventListener('click', () => {
+  segments.forEach(seg => { seg.format = 'mp4'; seg.compress = true; seg.crf = 28; });
+  renderSegments();
+  setStatus('ready', `All ${segments.length} segments set to MP4 · CRF 28 (Notion-ready)`);
+});
+
+// ─────────────────────────────────────────────
+// SEGMENT THUMBNAILS  (feature 4)
+// ─────────────────────────────────────────────
+const thumbCache     = new Map();  // segId → blob URL
+let   draggingSegIdx = -1;
+
+async function loadSegmentThumbnail(seg) {
+  if (thumbCache.has(seg.id)) return;
+  if (!seg._vid?.uploadPromise) return;
+  try {
+    const token = await seg._vid.uploadPromise;
+    const resp  = await fetch('/api/thumbnail', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, time: seg.start }),
+    });
+    if (!resp.ok) return;
+    thumbCache.set(seg.id, URL.createObjectURL(await resp.blob()));
+  } catch(_) {}
+}
+
+// Hover popup elements
+const segHoverThumb = document.getElementById('seg-hover-thumb');
+const segHoverImg   = segHoverThumb.querySelector('img');
+const segHoverLabel = document.getElementById('seg-hover-label');
+
+function showSegThumb(seg, cardEl) {
+  const url = thumbCache.get(seg.id);
+  if (!url) return;
+  const r = cardEl.getBoundingClientRect();
+  segHoverImg.src         = url;
+  segHoverLabel.textContent = `${seg.name}  ·  ${fmt(seg.start)}–${fmt(seg.end)}`;
+  segHoverThumb.style.left    = Math.max(4, r.left - 234) + 'px';
+  segHoverThumb.style.top     = Math.min(r.top, window.innerHeight - 148) + 'px';
+  segHoverThumb.style.display = 'block';
+}
+function hideSegThumb() { segHoverThumb.style.display = 'none'; }
+
+// ─────────────────────────────────────────────
+// AUTO-SAVE / RESTORE SESSION  (feature 1)
+// ─────────────────────────────────────────────
+const SESSION_KEY = 'piSlice_session_v1';
+
+function saveSession() {
+  if (!segments.length) { localStorage.removeItem(SESSION_KEY); return; }
+  const data = {
+    savedAt:  Date.now(),
+    segments: segments.map(s => ({
+      id: s.id, start: s.start, end: s.end,
+      name: s.name, notes: s.notes || '',
+      format: s.format, crf: s.crf, compress: s.compress,
+      gifFps: s.gifFps, gifWidth: s.gifWidth,
+      srcName: s.srcName || s._vid?.filename || '',
+    })),
+  };
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(data)); } catch(_) {}
+}
+
+function checkRestore() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data?.segments?.length) return;
+    const ago  = Math.round((Date.now() - data.savedAt) / 60000);
+    const label = ago < 60 ? `${ago} min ago` : `${Math.round(ago/60)}h ago`;
+    document.getElementById('restore-title').textContent =
+      `Restore ${data.segments.length} segment${data.segments.length!==1?'s':''} from last session?`;
+    document.getElementById('restore-sub').textContent =
+      `Saved ${label} — re-import your video(s) to enable export`;
+    document.getElementById('restore-banner').style.display = 'flex';
+    document.getElementById('btn-restore-yes').onclick = () => restoreSession(data);
+    document.getElementById('btn-restore-no').onclick  = () => {
+      localStorage.removeItem(SESSION_KEY);
+      document.getElementById('restore-banner').style.display = 'none';
+    };
+  } catch(_) {}
+}
+
+function restoreSession(data) {
+  document.getElementById('restore-banner').style.display = 'none';
+  segments = data.segments.map(s => ({
+    ...s, _vid: null, _orphaned: true, compress: s.compress !== false,
+  }));
+  uploadScreen.style.display = 'none';
+  editor.classList.add('visible');
+  renderSegments();
+  setStatus('ready', `Restored ${segments.length} segments — import your video to continue`);
+}
+
+// When a video finishes uploading, link it to any orphaned segments with a matching name
+function linkOrphanedSegments(vid) {
+  let linked = 0;
+  segments.forEach(seg => {
+    if (seg._orphaned && seg.srcName === vid.filename) {
+      seg._vid = vid; seg._orphaned = false; linked++;
+    }
+  });
+  if (linked) { renderSegments(); setStatus('ready', `Linked ${linked} restored segment${linked!==1?'s':''} to "${vid.filename}"`); }
+}
+
+// ─────────────────────────────────────────────
+// DARK MODE
+// ─────────────────────────────────────────────
+document.getElementById('btn-dark-mode').addEventListener('click', () => {
+  document.body.classList.toggle('dark');
+  document.getElementById('btn-dark-mode').textContent =
+    document.body.classList.contains('dark') ? '☀️' : '🌙';
+  drawTimeline();
+});
+function isDark() { return document.body.classList.contains('dark'); }
+
+// ─────────────────────────────────────────────
+// BATCH RENAME (applies to selected segments only)
+// ─────────────────────────────────────────────
+function updateSelCount() { /* selection tracked via checkboxes */ }
+
+const segPanel = document.getElementById('segments-panel');
+document.getElementById('btn-batch-rename').addEventListener('click', () => {
+  const br   = document.getElementById('batch-rename');
+  const open = getComputedStyle(br).display !== 'none';
+  br.style.display = open ? 'none' : 'block';
+  segPanel.classList.toggle('select-mode', !open);
+  if (!open) updateSelCount();
+});
+document.getElementById('btn-close-rename').addEventListener('click', () => {
+  document.getElementById('batch-rename').style.display = 'none';
+  segPanel.classList.remove('select-mode');
+  selectedSegIds.clear();
+  updateSelCount();
+});
+
+document.getElementById('btn-select-all').addEventListener('click', () => {
+  const allSelected = selectedSegIds.size === segments.length;
+  if (allSelected) {
+    selectedSegIds.clear();
+    document.getElementById('btn-select-all').textContent = '☑ All';
+  } else {
+    segments.forEach(s => selectedSegIds.add(s.id));
+    document.getElementById('btn-select-all').textContent = '☐ None';
+  }
+  // Sync checkboxes in cards
+  document.querySelectorAll('.seg-check').forEach((cb, i) => {
+    cb.checked = selectedSegIds.has(segments[i]?.id);
+  });
+  updateSelCount();
+});
+
+document.getElementById('btn-apply-rename').addEventListener('click', () => {
+  const pattern  = document.getElementById('rename-pattern').value || 'segment_{n}';
+  const targets  = selectedSegIds.size
+    ? segments.filter(s => selectedSegIds.has(s.id))
+    : segments;
+  if (!targets.length) { setStatus('error', 'No segments to rename'); return; }
+  let counter = 1;
+  targets.forEach(seg => {
+    const base = seg._vid ? seg._vid.filename.replace(/\.[^/.]+$/, '') : 'video';
+    seg.name = pattern
+      .replace(/\{n\}/g,     String(counter++))
+      .replace(/\{video\}/g, base)
+      .replace(/\{time\}/g,  fmtShort(seg.start).replace(':', 'm') + 's');
+  });
+  renderSegments();
+  setStatus('ready', `Renamed ${targets.length} segment${targets.length !== 1 ? 's' : ''}`);
+});
+
+// ─────────────────────────────────────────────
+// RESIZABLE PANELS
+// ─────────────────────────────────────────────
+function makeResizer(handleId, elId, side) {
+  const handle = document.getElementById(handleId);
+  const el     = document.getElementById(elId);
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    handle.classList.add('dragging');
+    const startX = e.clientX, startW = el.offsetWidth;
+    const onMove = ev => {
+      const dx  = ev.clientX - startX;
+      const newW = side === 'left' ? startX - ev.clientX + startW
+                                   : startW + (side === 'right-shrink' ? -(ev.clientX - startX) : dx);
+      el.style.width = Math.max(80, Math.min(700, newW)) + 'px';
+      el.style.flex  = 'none';
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+}
+// rh-left: dragging right expands left sidebar, left shrinks it
+document.getElementById('rh-left').addEventListener('mousedown', e => {
+  e.preventDefault();
+  const lib = document.getElementById('vid-library');
+  const startX = e.clientX, startW = lib.offsetWidth;
+  document.getElementById('rh-left').classList.add('dragging');
+  const onMove = ev => {
+    lib.style.width = Math.max(80, Math.min(400, startW + ev.clientX - startX)) + 'px';
+    lib.style.flex  = 'none';
+  };
+  const onUp = () => {
+    document.getElementById('rh-left').classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+document.getElementById('rh-right').addEventListener('mousedown', e => {
+  e.preventDefault();
+  const panel = document.getElementById('segments-panel');
+  const startX = e.clientX, startW = panel.offsetWidth;
+  document.getElementById('rh-right').classList.add('dragging');
+  const onMove = ev => {
+    panel.style.width = Math.max(150, Math.min(600, startW - (ev.clientX - startX))) + 'px';
+    panel.style.flex  = 'none';
+  };
+  const onUp = () => {
+    document.getElementById('rh-right').classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+// ─────────────────────────────────────────────
+// MULTI-VIEW DRAW
+// ─────────────────────────────────────────────
+
+// When draw mode turns ON in multi-view, click a cell to select it as draw target
+mvGrid.addEventListener('click', e => {
+  if (!drawActive || !multiViewActive) return;
+  const btn = e.target.closest('button');
+  if (btn) return; // ignore control buttons
+  const cell = e.target.closest('.mv-cell');
+  if (!cell) return;
+  const slot = parseInt(cell.id.replace('mv-cell-', ''));
+  selectMvDrawTarget(slot);
+});
+
+function selectMvDrawTarget(slot) {
+  // Deselect previous
+  document.querySelectorAll('.mv-cell.draw-target').forEach(c => c.classList.remove('draw-target'));
+  mvDrawCanvases.forEach(c => c.classList.remove('active'));
+  if (mvDrawTarget === slot) { mvDrawTarget = -1; return; } // toggle off
+
+  mvDrawTarget = slot;
+  const cell = document.getElementById(`mv-cell-${slot}`);
+  cell.classList.add('draw-target');
+  const dc = mvDrawCanvases[slot];
+  // Size the canvas to the cell
+  const r = cell.getBoundingClientRect();
+  if (dc.width !== r.width)  dc.width  = r.width;
+  if (dc.height !== r.height) dc.height = r.height;
+  dc.classList.add('active');
+}
+
+// Patch draw events to also route to mv canvases
+// We override getActiveCanvas() used by draw routines
+function getActiveDrawCanvas() {
+  if (multiViewActive && mvDrawTarget >= 0) return mvDrawCanvases[mvDrawTarget];
+  return drawCanvas;
+}
+function getActiveDrawCtx() {
+  return getActiveDrawCanvas().getContext('2d');
+}
+
+// When draw mode toggled off, clean up mv draw targets
+btnDraw.addEventListener('click', () => {
+  if (!drawActive) { // just turned off
+    document.querySelectorAll('.mv-cell.draw-target').forEach(c => c.classList.remove('draw-target'));
+    mvDrawCanvases.forEach(c => c.classList.remove('active'));
+    mvDrawTarget = -1;
+  }
+});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+checkServer();
+checkRestore();
+</script>
+</body>
+</html>

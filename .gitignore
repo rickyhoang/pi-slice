@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+ffmpeg*.js
+ffmpeg*.wasm
+ffmpeg*.worker.js
+ffmpeg-core.*
