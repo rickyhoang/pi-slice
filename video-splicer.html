@@ -203,15 +203,19 @@
       overflow: hidden;
     }
     .panel-header {
-      padding: 11px 14px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+      padding: 9px 12px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
     }
-    .panel-header h3 { font-size: 13px; font-weight: 600; }
-    .panel-header .count { font-size: 12px; color: var(--text2); }
+    .panel-header h3    { font-size:13px; font-weight:600; }
+    .panel-header .count { font-size:11px; color:var(--text2); flex:1; }
+    .panel-header-actions { display:flex; gap:1px; }
+    .panel-icon-btn {
+      background:none; border:none; color:var(--text2); cursor:pointer;
+      font-size:13px; padding:4px 7px; border-radius:5px; line-height:1;
+      transition:background .12s, color .12s;
+    }
+    .panel-icon-btn:hover  { color:var(--text); background:var(--surface2); }
+    .panel-icon-btn.active { color:var(--accent); background:rgba(40,96,204,.1); }
 
     #segments-list {
       flex: 1;
@@ -242,6 +246,7 @@
     .segment-card {
       background: var(--surface2);
       border: 1px solid var(--border);
+      border-left: 3px solid var(--border);
       border-radius: 8px;
       padding: 11px 11px 10px;
       margin-bottom: 7px;
@@ -347,8 +352,8 @@
     }
     .panel-footer .btn { width: 100%; margin-bottom: 5px; }
     .panel-footer .btn:last-child { margin-bottom: 0; }
-    #combine-row { flex-direction: column; gap: 5px; }
-    #combine-row select, #combine-row button { width: 100%; }
+    #footer-top-row { display:flex; gap:5px; margin-bottom:5px; }
+    #footer-top-row .btn { flex:1; font-size:11px; padding:5px 6px; }
 
     /* ── Video library sidebar ── */
     #vid-library {
@@ -512,6 +517,19 @@
     .crf-slider { flex:1; min-width:50px; accent-color:var(--accent); cursor:pointer; }
     .crf-val    { color:var(--text); font-weight:600; font-family:monospace; font-size:11px; }
     .crf-hint   { font-size:10px; color:var(--text2); white-space:nowrap; }
+    .segment-card.has-notes { border-left-color: #1e7a3c; }
+    body.dark .segment-card.has-notes { border-left-color: #4ff78e; }
+    .seg-group-wrap {
+      background: rgba(79,142,247,.05); border: 1px solid rgba(79,142,247,.2);
+      border-radius: 8px; padding: 6px 6px 4px; margin-bottom: 7px;
+    }
+    .seg-group-header {
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      padding: 0 4px 5px; display: flex; align-items: center; gap: 6px;
+    }
+    .seg-group-header span { color: var(--text2); font-weight: 400; }
+    .seg-group-wrap .segment-card { margin-bottom: 4px; }
+    .seg-group-wrap .segment-card:last-child { margin-bottom: 0; }
     .seg-selected {
       background:   color-mix(in srgb, var(--seg-color) 18%, var(--surface2)) !important;
       border-color: var(--seg-color) !important;
@@ -538,9 +556,10 @@
     #segments-panel.select-mode .seg-check { display:inline-block; }
 
     /* ── Combined options row (format + compress) ── */
-    .seg-options { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:6px; }
-    .compress-label { display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text2); cursor:pointer; white-space:nowrap; }
-    .compress-label input { accent-color:var(--accent); }
+    .seg-options { display:flex; align-items:center; gap:5px; margin-bottom:6px; }
+    .seg-options .seg-fmt-select { flex:1; min-width:0; }
+    .seg-qual-select { flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:11px; padding:3px 4px; cursor:pointer; }
+    .seg-qual-select:focus { outline:none; border-color:var(--accent); }
 
     /* ── Notes toggle ── */
     .seg-notes-toggle { background:none; border:none; color:var(--text2); font-size:11px; cursor:pointer; padding:0 0 4px; text-align:left; }
@@ -628,6 +647,64 @@
     #restore-banner .restore-msg { flex:1; }
     #restore-banner .restore-msg strong { display:block; margin-bottom:2px; }
     #restore-banner .restore-msg span  { font-size:11px; color:var(--text2); }
+
+    /* ── Arm selector buttons ── */
+    .seg-perspective { font-size:10px; padding:1px 8px; border-radius:10px; background:var(--accent); color:#fff; font-weight:600; flex-shrink:0; white-space:nowrap; }
+    #notes-banner { display:none; align-items:center; gap:8px; padding:6px 12px; background:rgba(192,88,16,.12); border-bottom:1px solid rgba(192,88,16,.25); font-size:12px; color:var(--accent2); flex-shrink:0; }
+    .mv-label { background:transparent; border:none; border-bottom:1px solid transparent; color:#fff; font-weight:600; font-size:11px; width:64px; outline:none; cursor:text; }
+    .mv-label:focus { border-bottom-color:rgba(255,255,255,.5); }
+
+    /* ── Instruction modal ── */
+    #instr-modal {
+      position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:500;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #instr-panel {
+      background:var(--surface); border-radius:12px;
+      width:92vw; max-width:1280px; height:88vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 12px 48px rgba(0,0,0,.45);
+    }
+    .instr-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 18px; border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .instr-header h2 { font-size:15px; font-weight:700; }
+    #instr-body {
+      flex:1; display:grid; grid-template-columns:1fr; overflow:hidden;
+    }
+    #instr-body.preview-open {
+      grid-template-columns: 360px 1fr;
+    }
+    #instr-form {
+      padding:14px 16px; overflow-y:auto; border-right:1px solid var(--border);
+    }
+    #instr-form::-webkit-scrollbar { width:5px; }
+    #instr-form::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    .instr-section { margin-bottom:18px; }
+    .instr-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text2); margin-bottom:7px; }
+    .instr-label { display:block; font-size:11px; color:var(--text2); margin-bottom:3px; margin-top:6px; }
+    .instr-input {
+      width:100%; background:var(--surface2); border:1px solid var(--border);
+      border-radius:5px; color:var(--text); padding:6px 8px; font-size:12px;
+      margin-bottom:4px;
+    }
+    .instr-input:focus { outline:none; border-color:var(--accent); }
+    .instr-textarea {
+      width:100%; background:var(--surface2); border:1px solid var(--border);
+      border-radius:5px; color:var(--text); padding:6px 8px; font-size:12px;
+      resize:vertical; font-family:inherit; margin-bottom:4px;
+    }
+    .instr-textarea:focus { outline:none; border-color:var(--accent); }
+    #instr-preview {
+      overflow-y:auto; background:var(--surface2);
+    }
+    #instr-preview::-webkit-scrollbar { width:5px; }
+    #instr-preview::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    #instr-preview-content {
+      padding:20px 24px; font-family:monospace; font-size:12px; line-height:1.7;
+      white-space:pre-wrap; color:var(--text);
+    }
 
     /* ── Status bar ── */
     #status-bar {
@@ -787,25 +864,25 @@
         <div class="mv-cell" id="mv-cell-0">
           <video id="mv-v0" preload="auto" muted></video>
           <canvas class="mv-draw-canvas" id="mv-dc-0"></canvas>
-          <div class="mv-hud"><span class="mv-label" id="mv-lbl-0">Slot 1</span><button class="mv-assign-btn" data-slot="0">Change</button><button class="mv-clear-btn" data-slot="0">✕</button></div>
+          <div class="mv-hud"><input class="mv-label" id="mv-lbl-0" value="Base"><button class="mv-assign-btn" data-slot="0">Change</button><button class="mv-clear-btn" data-slot="0">✕</button></div>
           <div class="mv-empty">Click or drag video here</div>
         </div>
         <div class="mv-cell" id="mv-cell-1">
           <video id="mv-v1" preload="auto" muted></video>
           <canvas class="mv-draw-canvas" id="mv-dc-1"></canvas>
-          <div class="mv-hud"><span class="mv-label" id="mv-lbl-1">Slot 2</span><button class="mv-assign-btn" data-slot="1">Change</button><button class="mv-clear-btn" data-slot="1">✕</button></div>
+          <div class="mv-hud"><input class="mv-label" id="mv-lbl-1" value="Left"><button class="mv-assign-btn" data-slot="1">Change</button><button class="mv-clear-btn" data-slot="1">✕</button></div>
           <div class="mv-empty">Click or drag video here</div>
         </div>
         <div class="mv-cell" id="mv-cell-2">
           <video id="mv-v2" preload="auto" muted></video>
           <canvas class="mv-draw-canvas" id="mv-dc-2"></canvas>
-          <div class="mv-hud"><span class="mv-label" id="mv-lbl-2">Slot 3</span><button class="mv-assign-btn" data-slot="2">Change</button><button class="mv-clear-btn" data-slot="2">✕</button></div>
+          <div class="mv-hud"><input class="mv-label" id="mv-lbl-2" value="Right"><button class="mv-assign-btn" data-slot="2">Change</button><button class="mv-clear-btn" data-slot="2">✕</button></div>
           <div class="mv-empty">Click or drag video here</div>
         </div>
         <div class="mv-cell" id="mv-cell-3">
           <video id="mv-v3" preload="auto" muted></video>
           <canvas class="mv-draw-canvas" id="mv-dc-3"></canvas>
-          <div class="mv-hud"><span class="mv-label" id="mv-lbl-3">Slot 4</span><button class="mv-assign-btn" data-slot="3">Change</button><button class="mv-clear-btn" data-slot="3">✕</button></div>
+          <div class="mv-hud"><input class="mv-label" id="mv-lbl-3" value="Top"><button class="mv-assign-btn" data-slot="3">Change</button><button class="mv-clear-btn" data-slot="3">✕</button></div>
           <div class="mv-empty">Click or drag video here</div>
         </div>
       </div>
@@ -870,8 +947,11 @@
       <div class="panel-header">
         <h3>Segments</h3>
         <span class="count" id="seg-count">0 segments</span>
-        <button class="btn btn-secondary" id="btn-batch-rename"
-                style="font-size:11px;padding:3px 8px" title="Batch rename all segments">✎ Rename</button>
+        <div class="panel-header-actions">
+          <button class="panel-icon-btn" id="btn-notes-toggle-all" title="Expand / collapse all notes">📝</button>
+          <button class="panel-icon-btn" id="btn-select-mode"      title="Select segments">☑</button>
+          <button class="panel-icon-btn" id="btn-batch-rename"     title="Batch rename selected">✎</button>
+        </div>
       </div>
 
       <div id="batch-rename">
@@ -883,6 +963,7 @@
         </div>
       </div>
 
+      <div id="notes-banner">⚠ <span id="notes-banner-text"></span></div>
       <div id="segments-list">
         <div class="empty-state" id="empty-state">
           Seek to a point, press <kbd>Q</kbd> to set start<br>
@@ -892,16 +973,14 @@
       </div>
 
       <div class="panel-footer">
-        <button class="btn btn-primary"   id="btn-export-all"   style="display:none">↓ Export All</button>
-        <button class="btn btn-secondary" id="btn-notion-preset" style="display:none" title="Set all segments to MP4 CRF 28 — good for Notion uploads">📋 Notion Ready</button>
-        <button class="btn btn-secondary" id="btn-export-notes" style="display:none">📄 Export Notes (.md)</button>
-        <div id="combine-row" style="display:none">
-          <select id="combine-fmt" class="seg-fmt-select">
-            <option value="mp4">Combine → MP4</option>
-            <option value="webm">Combine → WebM</option>
-          </select>
-          <button class="btn btn-orange" id="btn-combine">⛓ Join & Download</button>
+        <!-- top row: small side-by-side buttons -->
+        <div id="footer-top-row" style="display:none">
+          <button class="btn btn-secondary" id="btn-notion-preset" title="Set all segments to MP4 CRF 28">📋 Notion Ready</button>
+          <button class="btn btn-orange"    id="btn-combine">⛓ Join</button>
         </div>
+        <button class="btn btn-primary"   id="btn-export-all"        style="display:none">↓ Export All</button>
+        <button class="btn btn-secondary" id="btn-export-selected"   style="display:none">↓ Export Selected</button>
+        <button class="btn btn-primary"   id="btn-open-instr-footer" style="display:none">📄 Instructions</button>
       </div>
     </div>
 
@@ -921,10 +1000,86 @@
   <div id="seg-hover-label"></div>
 </div>
 
+<!-- Instruction generator modal -->
+<div id="instr-modal" style="display:none">
+  <div id="instr-panel">
+    <div class="instr-header">
+      <h2>Generate Instructions</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary"   id="btn-generate-instr">Generate</button>
+        <button class="btn btn-secondary" id="btn-copy-instr">Copy for Notion</button>
+        <button class="btn btn-orange"    id="btn-export-package">📦 Export ZIP</button>
+        <button class="btn btn-secondary" id="btn-close-instr" style="font-size:16px;padding:3px 9px">×</button>
+      </div>
+    </div>
+    <div id="instr-body">
+      <div id="instr-form">
+        <!-- Metadata -->
+        <div class="instr-section">
+          <label class="instr-label" style="font-size:13px;font-weight:700;color:var(--text)">Title</label>
+          <input class="instr-input" id="fi-title" placeholder="e.g. mobile_dandelion_deployment_no_sticker" style="font-size:13px">
+          <div class="instr-section-title" style="margin-top:14px">Metadata</div>
+          <label class="instr-label">Singles</label>
+          <input class="instr-input" id="fi-singles" placeholder="e.g. Yes">
+          <label class="instr-label">POC</label>
+          <input class="instr-input" id="fi-poc" placeholder="Point of contact">
+          <label class="instr-label">Strategy</label>
+          <textarea class="instr-textarea" id="fi-strategy" rows="2" placeholder="Brief strategy description"></textarea>
+        </div>
+        <!-- Golden Standard Video -->
+        <div class="instr-section">
+          <div class="instr-section-title">Golden Standard Video</div>
+          <input class="instr-input" id="fi-golden-url" placeholder="Paste video URL (optional)">
+        </div>
+        <!-- Start State -->
+        <div class="instr-section">
+          <div class="instr-section-title">Start State</div>
+          <label class="instr-label">Fixed Position Props</label>
+          <textarea class="instr-textarea" id="fi-props-fixed" rows="3" placeholder="- Item 1&#10;- Item 2"></textarea>
+          <label class="instr-label">Variable Position Props</label>
+          <textarea class="instr-textarea" id="fi-props-var" rows="3" placeholder="- Item 1&#10;- Item 2"></textarea>
+        </div>
+        <!-- Strategy notes -->
+        <div class="instr-section">
+          <div class="instr-section-title">Strategy — Important Notes</div>
+          <textarea class="instr-textarea" id="fi-important-notes" rows="3" placeholder="- Key notes for the operator"></textarea>
+        </div>
+        <!-- Final state -->
+        <div class="instr-section">
+          <div class="instr-section-title">Final State</div>
+          <textarea class="instr-textarea" id="fi-final-state" rows="3" placeholder="- Describe completed outcome&#10;- Final object locations"></textarea>
+        </div>
+        <!-- Clean up -->
+        <div class="instr-section">
+          <div class="instr-section-title">Clean Up Process</div>
+          <textarea class="instr-textarea" id="fi-cleanup" rows="4" placeholder="Describe how the operator should clean up this scene. Be sure to mention:&#10;- How to clean the station after a messy task (like peanut butter or toothpaste)&#10;- How to clean when an allergen is present (Use Clorox wipes to disinfect entire station, including master controllers)&#10;- How to dispose of consumable props (boxes, cucumber slices, windmills, etc.)&#10;- Where to put non-consumable props (back in the kit under the station)"></textarea>
+        </div>
+        <!-- PPE / Ergonomics -->
+        <div class="instr-section">
+          <div class="instr-section-title">Warnings</div>
+          <label class="instr-label">PPE Requirements</label>
+          <textarea class="instr-textarea" id="fi-ppe" rows="2" placeholder="What PPE should the operator use?"></textarea>
+          <label class="instr-label">Ergonomic Guidance</label>
+          <textarea class="instr-textarea" id="fi-ergonomics" rows="2" placeholder="What recommendations for ergonomic health do you have? If the answer is N/A that's okay, but say that"></textarea>
+        </div>
+        <!-- Prop links -->
+        <div class="instr-section">
+          <div class="instr-section-title">Prop Links (Prototypers Only)</div>
+          <textarea class="instr-textarea" id="fi-prop-links" rows="3" placeholder="- [Prop name](URL)"></textarea>
+        </div>
+      </div>
+      <!-- Preview -->
+      <div id="instr-preview" style="display:none">
+        <div id="instr-preview-content" style="color:var(--text2);font-size:13px;padding:20px">
+          Fill in the fields on the left and click <strong>Generate</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-// ─────────────────────────────────────────────
-// ELEMENTS
-// ─────────────────────────────────────────────
+// elements
 const uploadScreen  = document.getElementById('upload-screen');
 const dropZone      = document.getElementById('drop-zone');
 const fileInput     = document.getElementById('file-input');
@@ -945,8 +1100,7 @@ const segmentsList  = document.getElementById('segments-list');
 const emptyState    = document.getElementById('empty-state');
 const segCount      = document.getElementById('seg-count');
 const btnExportAll  = document.getElementById('btn-export-all');
-const combineRow    = document.getElementById('combine-row');
-const combineFmt    = document.getElementById('combine-fmt');
+const footerTopRow  = document.getElementById('footer-top-row');
 const btnCombine    = document.getElementById('btn-combine');
 const btnMultiview  = document.getElementById('btn-multiview');
 const mvGrid        = document.getElementById('mv-grid');
@@ -958,15 +1112,19 @@ const statusText    = document.getElementById('status-text');
 const progressWrap  = document.getElementById('progress-wrap');
 const progressFill  = document.getElementById('progress-fill');
 
-// ─────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────
+// state
 let videos         = [];   // [{file, filename, token, uploadPromise, duration}]
 let activeVideoIdx = -1;
 let inPoint        = 0;
 let outPoint       = 0;
 let segments       = [];
 let exportQueue    = Promise.resolve();
+
+const instrData = {
+  title:'', singles:'', poc:'', strategy:'', goldenUrl:'',
+  propsFixed:'', propsVar:'', importantNotes:'',
+  finalState:'', cleanup:'', ppe:'', ergonomics:'', propLinks:''
+};
 let exportTotal    = 0;
 let exportDone     = 0;
 let selectedSegIds = new Set();
@@ -982,9 +1140,7 @@ let mvPickerSlot    = -1; // which slot the picker is open for
 
 const PALETTE = ['#4f8ef7','#f7914f','#4ff78e','#f74f8e','#c34ff7','#f7df4f','#4ff7c3','#f74f4f'];
 
-// ─────────────────────────────────────────────
-// SERVER CHECK
-// ─────────────────────────────────────────────
+// server check
 async function checkServer() {
   try {
     const r = await fetch('/api/status');
@@ -999,9 +1155,7 @@ async function checkServer() {
   }
 }
 
-// ─────────────────────────────────────────────
-// UPLOAD
-// ─────────────────────────────────────────────
+// upload
 function uploadFile(file, label) {
   const mb = (file.size / 1024 / 1024).toFixed(0);
   return new Promise((resolve, reject) => {
@@ -1035,9 +1189,7 @@ function uploadFile(file, label) {
   });
 }
 
-// ─────────────────────────────────────────────
-// STATUS / PROGRESS
-// ─────────────────────────────────────────────
+// status / progress
 function setStatus(type, msg) {
   statusText.textContent = msg;
   statusDot.className = 'status-dot' + (type === 'busy' ? ' busy' : type === 'error' ? ' error' : '');
@@ -1053,9 +1205,7 @@ function showProgress(pct) {
   }
 }
 
-// ─────────────────────────────────────────────
-// FILE IMPORT
-// ─────────────────────────────────────────────
+// file import
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -1159,9 +1309,7 @@ function renderVideoLibrary() {
   });
 }
 
-// ─────────────────────────────────────────────
-// MULTI-VIEW
-// ─────────────────────────────────────────────
+// multi-view
 btnMultiview.addEventListener('click', toggleMultiView);
 
 function toggleMultiView() {
@@ -1197,8 +1345,7 @@ function assignSlot(slotIdx, vidIdx) {
 
   const cell = document.getElementById(`mv-cell-${slotIdx}`);
   cell.classList.add('assigned');
-  document.getElementById(`mv-lbl-${slotIdx}`).textContent =
-    vid.filename.replace(/\.[^/.]+$/, '');
+  // keep the perspective label — don't overwrite with filename
 
   // Slot 0 drives the timeline — keep main video and thumbnail in sync
   if (slotIdx === 0) {
@@ -1280,12 +1427,10 @@ function clearSlot(slotIdx) {
   el.pause(); el.src = '';
   const cell = document.getElementById(`mv-cell-${slotIdx}`);
   cell.classList.remove('assigned');
-  document.getElementById(`mv-lbl-${slotIdx}`).textContent = `Slot ${slotIdx + 1}`;
+  document.getElementById(`mv-lbl-${slotIdx}`).value = ['Base','Left','Right','Top'][slotIdx];
 }
 
-// ─────────────────────────────────────────────
-// DRAG FROM LIBRARY → MULTI-VIEW SLOT
-// ─────────────────────────────────────────────
+// drag from library → multi-view slot
 mvGrid.addEventListener('dragover', e => {
   const cell = e.target.closest('.mv-cell');
   if (!cell) return;
@@ -1308,9 +1453,7 @@ mvGrid.addEventListener('drop', e => {
   if (!isNaN(vidIdx) && videos[vidIdx]) assignSlot(slot, vidIdx);
 });
 
-// ─────────────────────────────────────────────
-// DRAW MODE
-// ─────────────────────────────────────────────
+// draw mode
 const drawCanvas  = document.getElementById('draw-canvas');
 const drawCtx     = drawCanvas.getContext('2d');
 const drawToolbar = document.getElementById('draw-toolbar');
@@ -1521,9 +1664,7 @@ function placeText(pos) {
   textInput.addEventListener('keydown', e => { if (e.key==='Enter') textInput.blur(); e.stopPropagation(); });
 }
 
-// ─────────────────────────────────────────────
-// IN / OUT POINTS
-// ─────────────────────────────────────────────
+// in / out points
 btnSetIn.addEventListener('click',  () => setIn(video.currentTime));
 btnSetOut.addEventListener('click', () => setOut(video.currentTime));
 
@@ -1555,9 +1696,7 @@ outInput.addEventListener('change', () => {
   if (t !== null) { outPoint = clamp(t, 0, video.duration); outInput.value = fmt(outPoint); drawTimeline(); }
 });
 
-// ─────────────────────────────────────────────
-// SEGMENTS
-// ─────────────────────────────────────────────
+// segments
 btnAdd.addEventListener('click', addSegment);
 
 function addSegment() {
@@ -1567,13 +1706,15 @@ function addSegment() {
     // Add one segment per assigned slot, all with the same timestamps
     const assigned = multiSlots.map((v,i) => ({v,i})).filter(x => x.v);
     if (!assigned.length) { setStatus('error', 'Assign at least one video to a slot first.'); return; }
-    const groupNum = segments.length + 1;
-    const labels   = ['TL','TR','BL','BR'];
+    const groupNum  = segments.length + 1;
+    const groupId   = Date.now();
+    const getMvLabel = i => document.getElementById(`mv-lbl-${i}`)?.value?.trim() || ['Base','Left','Right','Top'][i];
     assigned.forEach(({v, i}) => {
-      const base = v.filename.replace(/\.[^/.]+$/, '');
-      segments.push({ id: Date.now() + i, start: inPoint, end: outPoint,
-        name: `${base}_segment_${groupNum}_${labels[i]}`,
-        _vid: v, srcName: v.filename,
+      const base    = v.filename.replace(/\.[^/.]+$/, '');
+      const persp   = getMvLabel(i);
+      segments.push({ id: groupId + i, start: inPoint, end: outPoint,
+        name: `${base}_${groupNum}_${persp}`,
+        _vid: v, srcName: v.filename, stepGroup: groupId, perspective: persp,
         format: 'original', gifFps: 10, gifWidth: 480, crf: 25, compress: true, notes: '' });
     });
     renderSegments(); drawTimeline();
@@ -1585,8 +1726,8 @@ function addSegment() {
   const vid  = videos[activeVideoIdx];
   const base = vid.filename.replace(/\.[^/.]+$/, '');
   segments.push({ id: Date.now(), start: inPoint, end: outPoint,
-    name: `${base}_segment_${segments.length + 1}`,
-    _vid: vid, srcName: vid.filename,
+    name: `${base}_${segments.length + 1}`,
+    _vid: vid, srcName: vid.filename, stepGroup: null, perspective: null,
     format: 'original', gifFps: 10, gifWidth: 480, crf: 25, compress: true, notes: '' });
   renderSegments();
   drawTimeline();
@@ -1595,22 +1736,70 @@ function addSegment() {
 
 function removeSegment(id) {
   segments = segments.filter(s => s.id !== id);
+  selectedSegIds.delete(id);
   renderSegments();
   drawTimeline();
 }
 
 function renderSegments() {
   const savedScroll = segmentsList.scrollTop;
-  document.querySelectorAll('.segment-card').forEach(el => el.remove());
+  // Remove old cards and group wrappers
+  segmentsList.querySelectorAll('.segment-card, .seg-group-wrap').forEach(el => el.remove());
   const has = segments.length > 0;
-  emptyState.style.display                                         = has ? 'none'  : 'block';
-  btnExportAll.style.display                                       = has ? 'block' : 'none';
-  document.getElementById('btn-export-notes').style.display        = has ? 'block' : 'none';
+  emptyState.style.display                                          = has ? 'none'  : 'block';
+  btnExportAll.style.display                                        = has ? 'block' : 'none';
+  document.getElementById('btn-open-instr-footer').style.display   = has ? 'block' : 'none';
   document.getElementById('btn-notion-preset').style.display       = has ? 'block' : 'none';
-  combineRow.style.display                                         = has ? 'flex'  : 'none';
-  segCount.textContent            = `${segments.length} segment${segments.length !== 1 ? 's' : ''}`;
+  footerTopRow.style.display                                        = has ? 'flex'  : 'none';
+  updateExportSelectedBtn();
+  const seenGrps = new Set();
+  let stepCount = 0;
+  segments.forEach(s => {
+    if (s.stepGroup) { if (!seenGrps.has(s.stepGroup)) { seenGrps.add(s.stepGroup); stepCount++; } }
+    else stepCount++;
+  });
+  segCount.textContent = stepCount === segments.length
+    ? `${segments.length} segment${segments.length !== 1 ? 's' : ''}`
+    : `${stepCount} step${stepCount !== 1 ? 's' : ''} · ${segments.length} clips`;
 
-  segments.forEach((seg, idx) => {
+  // Build render items: groups collected, singles in-order
+  const processedGroups = new Set();
+  const renderItems = [];
+  segments.forEach(seg => {
+    if (seg.stepGroup) {
+      if (processedGroups.has(seg.stepGroup)) return;
+      processedGroups.add(seg.stepGroup);
+      renderItems.push({ type: 'group', segs: segments.filter(s => s.stepGroup === seg.stepGroup) });
+    } else {
+      renderItems.push({ type: 'single', seg });
+    }
+  });
+
+  let globalIdx = 0; // running card index for palette colour
+  renderItems.forEach(item => {
+    if (item.type === 'group') {
+      const wrap = document.createElement('div');
+      wrap.className = 'seg-group-wrap';
+      const hdr = document.createElement('div');
+      hdr.className = 'seg-group-header';
+      hdr.innerHTML = `Step group <span>${item.segs.length} perspectives</span>`;
+      wrap.appendChild(hdr);
+      item.segs.forEach(seg => {
+        const card = buildSegmentCard(seg, globalIdx++);
+        wrap.appendChild(card);
+      });
+      segmentsList.appendChild(wrap);
+    } else {
+      segmentsList.appendChild(buildSegmentCard(item.seg, globalIdx++));
+    }
+  });
+
+  segmentsList.scrollTop = savedScroll;
+  updateNotesBanner();
+  saveSession();
+}
+
+function buildSegmentCard(seg, idx) {
     const color = PALETTE[idx % PALETTE.length];
     const dur   = seg.end - seg.start;
     const card  = document.createElement('div');
@@ -1619,11 +1808,17 @@ function renderSegments() {
     card.style.setProperty('--seg-color', color);
 
     if (seg._orphaned) card.classList.add('seg-orphaned');
+    // For grouped segments, any note in the group counts
+    const groupHasNotes = seg.stepGroup
+      ? segments.some(s => s.stepGroup === seg.stepGroup && s.notes?.trim())
+      : seg.notes?.trim();
+    if (groupHasNotes) card.classList.add('has-notes');
     card.innerHTML = `
       <div class="seg-row1">
         <div class="seg-drag-handle" title="Drag to reorder">⠿</div>
         <input type="checkbox" class="seg-check" ${selectedSegIds.has(seg.id)?'checked':''}>
         <div class="seg-num" style="background:${color}">${idx + 1}</div>
+        ${seg.perspective ? `<span class="seg-perspective">${esc(seg.perspective)}</span>` : ''}
         <input class="seg-name" type="text" value="${esc(seg.name)}" placeholder="Name">
         <button class="seg-remove" title="Remove">×</button>
       </div>
@@ -1637,7 +1832,7 @@ function renderSegments() {
           <label>End</label>
           <input type="text" class="time-input seg-end" value="${fmt(seg.end)}">
         </div>
-        <span class="seg-dur">${fmt(dur)}</span>
+        <span class="seg-dur">${fmtDur(dur)}</span>
       </div>
       ${videos.length > 1 ? `<div class="seg-source">From: ${esc(seg.srcName || '')}</div>` : ''}
       <div class="seg-options">
@@ -1647,19 +1842,18 @@ function renderSegments() {
           <option value="gif"      ${seg.format==='gif'?'selected':''}>GIF</option>
           <option value="webm"     ${seg.format==='webm'?'selected':''}>WebM</option>
         </select>
-        <span class="gif-opts" style="display:${seg.format==='gif'?'flex':'none'};gap:4px;align-items:center">
+        <select class="seg-qual-select" style="display:${seg.format==='mp4'||seg.format==='webm'?'block':'none'}">
+          <option value="fast"  ${getQualPreset(seg)==='fast' ?'selected':''}>Fast copy</option>
+          <option value="high"  ${getQualPreset(seg)==='high' ?'selected':''}>High (CRF 20)</option>
+          <option value="good"  ${getQualPreset(seg)==='good' ?'selected':''}>Good (CRF 25)</option>
+          <option value="small" ${getQualPreset(seg)==='small'?'selected':''}>Small (CRF 30)</option>
+        </select>
+        <span class="gif-opts" style="display:${seg.format==='gif'?'flex':'none'};gap:4px;align-items:center;flex:1">
           <input type="number" class="gif-fps"   value="${seg.gifFps}"   min="1"   max="30"   style="width:40px" title="FPS">
           <span style="font-size:10px;color:var(--text2)">fps</span>
           <input type="number" class="gif-width" value="${seg.gifWidth}" min="100" max="1920" style="width:50px" title="Width px">
           <span style="font-size:10px;color:var(--text2)">px</span>
         </span>
-        <label class="compress-label" style="margin-left:auto">
-          <input type="checkbox" class="compress-check" ${seg.compress!==false?'checked':''}>
-          CRF <span class="crf-val">${seg.crf||25}</span>
-        </label>
-        <input type="range" class="crf-slider" min="18" max="35" step="1" value="${seg.crf||25}"
-               style="${seg.compress===false?'opacity:.35;pointer-events:none':''}">
-        <span class="crf-hint">${crfHint(seg.crf||25)}</span>
       </div>
       <button class="seg-notes-toggle">${seg.notes ? '📝 Notes ▾' : '📝 Notes ▸'}</button>
       <textarea class="seg-notes" placeholder="Step notes…" style="display:${seg.notes?'block':'none'}">${esc(seg.notes||'')}</textarea>
@@ -1685,30 +1879,22 @@ function renderSegments() {
       if (segCheck.checked) selectedSegIds.add(seg.id);
       else selectedSegIds.delete(seg.id);
       updateSelCount();
+      updateExportSelectedBtn();
     });
 
     const fmtSelect   = card.querySelector('.seg-fmt-select');
+    const qualSelect  = card.querySelector('.seg-qual-select');
     const gifOpts     = card.querySelector('.gif-opts');
-    const crfSlider   = card.querySelector('.crf-slider');
-    const crfValSpan  = card.querySelector('.crf-val');
-    const crfHintSpan = card.querySelector('.crf-hint');
-    const compCheck   = card.querySelector('.compress-check');
     const notesToggle = card.querySelector('.seg-notes-toggle');
     const notesArea   = card.querySelector('.seg-notes');
 
     fmtSelect.addEventListener('change', () => {
       seg.format = fmtSelect.value;
-      gifOpts.style.display = seg.format === 'gif' ? 'flex' : 'none';
+      gifOpts.style.display  = seg.format === 'gif' ? 'flex' : 'none';
+      qualSelect.style.display = (seg.format === 'mp4' || seg.format === 'webm') ? 'block' : 'none';
     });
-    compCheck.addEventListener('change', () => {
-      seg.compress = compCheck.checked;
-      crfSlider.style.opacity       = seg.compress ? '1'    : '0.35';
-      crfSlider.style.pointerEvents = seg.compress ? 'auto' : 'none';
-    });
-    crfSlider.addEventListener('input', e => {
-      seg.crf = parseInt(e.target.value);
-      crfValSpan.textContent  = seg.crf;
-      crfHintSpan.textContent = crfHint(seg.crf);
+    qualSelect?.addEventListener('change', () => {
+      applyQualPreset(seg, qualSelect.value);
     });
     notesToggle.addEventListener('click', e => {
       e.stopPropagation();
@@ -1720,7 +1906,28 @@ function renderSegments() {
     card.querySelector('.gif-width').addEventListener('change', e => { seg.gifWidth = Math.max(100, Math.min(1920, parseInt(e.target.value) || 480)); e.target.value = seg.gifWidth; });
 
     card.querySelector('.seg-name').addEventListener('change',  e => { seg.name  = e.target.value; saveSession(); });
-    card.querySelector('.seg-notes').addEventListener('input',  e => { seg.notes = e.target.value; saveSession(); });
+    card.querySelector('.seg-notes').addEventListener('input',  e => {
+      seg.notes = e.target.value;
+      // Sync notes + border to all other cards in the same step group
+      if (seg.stepGroup) {
+        segments.forEach(s => {
+          if (s.stepGroup === seg.stepGroup) {
+            s.notes = e.target.value;
+            const other = segmentsList.querySelector(`[data-id="${s.id}"]`);
+            if (other) {
+              other.classList.toggle('has-notes', !!e.target.value.trim());
+              const ta = other.querySelector('.seg-notes');
+              if (ta && ta !== e.target) ta.value = e.target.value;
+            }
+          }
+        });
+      }
+      card.classList.toggle('has-notes', !!e.target.value.trim());
+      updateNotesBanner();
+      saveSession();
+    });
+
+    // Arm selector
 
     // Drag-to-reorder
     const handle = card.querySelector('.seg-drag-handle');
@@ -1763,7 +1970,7 @@ function renderSegments() {
       if (t !== null) {
         seg.start = clamp(t, 0, seg.end - 0.1);
         e.target.value = fmt(seg.start);
-        card.querySelector('.seg-dur').textContent = fmt(seg.end - seg.start);
+        card.querySelector('.seg-dur').textContent = fmtDur(seg.end - seg.start);
         drawTimeline();
       }
     });
@@ -1773,7 +1980,7 @@ function renderSegments() {
       if (t !== null) {
         seg.end = clamp(t, seg.start + 0.1, video.duration);
         e.target.value = fmt(seg.end);
-        card.querySelector('.seg-dur').textContent = fmt(seg.end - seg.start);
+        card.querySelector('.seg-dur').textContent = fmtDur(seg.end - seg.start);
         drawTimeline();
       }
     });
@@ -1794,15 +2001,49 @@ function renderSegments() {
 
     card.querySelector('.btn-export').addEventListener('click', () => exportSegment(seg));
 
-    segmentsList.appendChild(card);
-  });
-  segmentsList.scrollTop = savedScroll;
-  saveSession();
+    return card;
 }
 
-// ─────────────────────────────────────────────
-// TIMELINE CANVAS
-// ─────────────────────────────────────────────
+function updateExportSelectedBtn() {
+  const btn = document.getElementById('btn-export-selected');
+  if (btn) btn.style.display = (selectedSegIds.size > 0 && segments.length > 0) ? 'block' : 'none';
+}
+
+document.getElementById('btn-export-selected').addEventListener('click', () => {
+  const toExport = segments.filter(s => selectedSegIds.has(s.id));
+  if (!toExport.length) return;
+  exportTotal = toExport.length;
+  exportDone  = 0;
+  setStatus('busy', `Exporting ${exportTotal} selected segment${exportTotal !== 1 ? 's' : ''}…`);
+  toExport.forEach(seg => exportSegment(seg));
+});
+
+function updateNotesBanner() {
+  const banner = document.getElementById('notes-banner');
+  const seenGroups = new Set();
+  let totalSteps = 0, missingNotes = 0;
+  segments.forEach(seg => {
+    if (seg.stepGroup) {
+      if (seenGroups.has(seg.stepGroup)) return; // already counted this group
+      seenGroups.add(seg.stepGroup);
+      totalSteps++;
+      const groupHasNotes = segments.some(s => s.stepGroup === seg.stepGroup && s.notes?.trim());
+      if (!groupHasNotes) missingNotes++;
+    } else {
+      totalSteps++;
+      if (!seg.notes?.trim()) missingNotes++;
+    }
+  });
+  if (!totalSteps || !missingNotes) {
+    banner.style.display = 'none';
+  } else {
+    document.getElementById('notes-banner-text').textContent =
+      `${missingNotes} step${missingNotes !== 1 ? 's' : ''} ${missingNotes !== 1 ? 'have' : 'has'} no notes`;
+    banner.style.display = 'flex';
+  }
+}
+
+// timeline canvas
 const ro = new ResizeObserver(() => {
   tlCanvas.width = tlCanvas.offsetWidth;
   drawTimeline();
@@ -1932,9 +2173,7 @@ function clearTimelineSelection() {
   timelineSelectedId = null;
 }
 
-// ─────────────────────────────────────────────
-// EXPORT  (server-side ffmpeg — fast, no browser memory issues)
-// ─────────────────────────────────────────────
+// export  (server-side ffmpeg — fast, no browser memory issues)
 
 function exportSegment(seg) {
   exportQueue = exportQueue.then(() => runExport(seg));
@@ -1991,31 +2230,36 @@ async function runExport(seg) {
 }
 
 btnExportAll.addEventListener('click', () => {
-  exportTotal = segments.length;
+  const toExport = selectedSegIds.size > 0
+    ? segments.filter(s => selectedSegIds.has(s.id))
+    : segments;
+  exportTotal = toExport.length;
   exportDone  = 0;
-  setStatus('busy', `Starting ${exportTotal} export${exportTotal !== 1 ? 's' : ''}…`);
-  segments.forEach(seg => exportSegment(seg));
+  const selNote = selectedSegIds.size > 0 ? ` (${toExport.length} selected)` : '';
+  setStatus('busy', `Starting ${exportTotal} export${exportTotal !== 1 ? 's' : ''}${selNote}…`);
+  toExport.forEach(seg => exportSegment(seg));
 });
 
-// ─────────────────────────────────────────────
-// COMBINE
-// ─────────────────────────────────────────────
+// combine
 btnCombine.addEventListener('click', async () => {
-  if (!segments.length) return;
+  const segs = selectedSegIds.size > 0
+    ? segments.filter(s => selectedSegIds.has(s.id))
+    : segments;
+  if (!segs.length) return;
   try {
     setStatus('busy', 'Waiting for uploads to complete…');
-    const uniqueVids = [...new Set(segments.map(s => s._vid))];
+    const uniqueVids = [...new Set(segs.map(s => s._vid))];
     await Promise.all(uniqueVids.map(v => v.uploadPromise));
 
-    const fmt = combineFmt.value;
-    setStatus('busy', `Combining ${segments.length} segments into ${fmt.toUpperCase()}…`);
+    const fmt = 'mp4';
+    setStatus('busy', `Combining ${segs.length} segments into ${fmt.toUpperCase()}…`);
     showProgress(20);
 
     const resp = await fetch('/api/combine', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        segments: segments.map(s => ({
+        segments: segs.map(s => ({
           token:    s._vid.token,
           start:    s.start,
           duration: s.end - s.start,
@@ -2044,9 +2288,7 @@ btnCombine.addEventListener('click', async () => {
   }
 });
 
-// ─────────────────────────────────────────────
-// KEYBOARD SHORTCUTS
-// ─────────────────────────────────────────────
+// keyboard shortcuts
 document.addEventListener('keydown', e => {
   if (!video.src) return;
   if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
@@ -2078,15 +2320,31 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ─────────────────────────────────────────────
-// UTILITIES
-// ─────────────────────────────────────────────
+// utilities
 function fmt(s) {
   if (isNaN(s) || s == null) return '0:00.0';
   const m  = Math.floor(s / 60);
   const ss = Math.floor(s % 60);
   const ds = Math.floor((s % 1) * 10);
   return `${m}:${String(ss).padStart(2,'0')}.${ds}`;
+}
+function getQualPreset(seg) {
+  if (seg.compress === false) return 'fast';
+  const crf = seg.crf || 25;
+  if (crf <= 21) return 'high';
+  if (crf <= 26) return 'good';
+  return 'small';
+}
+function applyQualPreset(seg, preset) {
+  const map = { fast: [false,25], high: [true,20], good: [true,25], small: [true,30] };
+  const [compress, crf] = map[preset] || [true,25];
+  seg.compress = compress; seg.crf = crf;
+}
+function fmtDur(s) {
+  if (isNaN(s) || s == null) return '0s';
+  if (s < 60) return s.toFixed(1) + 's';
+  const m = Math.floor(s / 60), sec = (s % 60).toFixed(1);
+  return `${m}m ${sec}s`;
 }
 function fmtShort(s) {
   return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
@@ -2126,16 +2384,12 @@ function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-// ─────────────────────────────────────────────
-// PLAYBACK SPEED
-// ─────────────────────────────────────────────
+// playback speed
 document.getElementById('speed-select').addEventListener('change', e => {
   video.playbackRate = parseFloat(e.target.value);
 });
 
-// ─────────────────────────────────────────────
-// TIMELINE ZOOM  (scroll wheel + reset)
-// ─────────────────────────────────────────────
+// timeline zoom  (scroll wheel + reset)
 tlCanvas.addEventListener('wheel', e => {
   e.preventDefault();
   if (!video.duration) return;
@@ -2156,9 +2410,7 @@ document.getElementById('zoom-badge').addEventListener('click', () => {
   drawTimeline();
 });
 
-// ─────────────────────────────────────────────
-// THUMBNAIL SCRUBBING
-// ─────────────────────────────────────────────
+// thumbnail scrubbing
 const thumbVideo     = document.getElementById('tl-thumb-video');
 const thumbEl        = document.getElementById('tl-thumb');
 const thumbCanvas    = document.getElementById('tl-thumb-canvas');
@@ -2182,38 +2434,23 @@ tlCanvas.addEventListener('mousemove', e => {
 
 tlCanvas.addEventListener('mouseleave', () => { thumbEl.style.display = 'none'; });
 
-// ─────────────────────────────────────────────
-// STEP NOTES EXPORT
-// ─────────────────────────────────────────────
-document.getElementById('btn-export-notes').addEventListener('click', () => {
-  const lines = segments.map((seg, i) => {
-    const ts = `${fmt(seg.start)} → ${fmt(seg.end)}`;
-    const notesBlock = seg.notes ? `\n\n${seg.notes}` : '';
-    return `## Step ${i + 1}: ${seg.name}\n**Time:** ${ts}  |  **Duration:** ${fmt(seg.end - seg.start)}${notesBlock}`;
-  });
-  const md = `# π slice — Segment Notes\n_Exported ${new Date().toLocaleString()}_\n\n${lines.join('\n\n---\n\n')}`;
-  triggerDownload(new Blob([md], { type: 'text/markdown' }), 'segment_notes.md');
-});
+// step notes export
+// Footer instructions button opens the same modal
+document.getElementById('btn-open-instr-footer').addEventListener('click', openInstructions);
 
-// ─────────────────────────────────────────────
-// FULLSCREEN  (feature 7)
-// ─────────────────────────────────────────────
+// fullscreen  (feature 7)
 document.getElementById('btn-fullscreen').addEventListener('click', () => {
   if (video.requestFullscreen) video.requestFullscreen();
 });
 
-// ─────────────────────────────────────────────
-// NOTION PRESET  (feature 6)
-// ─────────────────────────────────────────────
+// notion preset  (feature 6)
 document.getElementById('btn-notion-preset').addEventListener('click', () => {
   segments.forEach(seg => { seg.format = 'mp4'; seg.compress = true; seg.crf = 28; });
   renderSegments();
   setStatus('ready', `All ${segments.length} segments set to MP4 · CRF 28 (Notion-ready)`);
 });
 
-// ─────────────────────────────────────────────
-// SEGMENT THUMBNAILS  (feature 4)
-// ─────────────────────────────────────────────
+// segment thumbnails  (feature 4)
 const thumbCache     = new Map();  // segId → blob URL
 let   draggingSegIdx = -1;
 
@@ -2248,21 +2485,22 @@ function showSegThumb(seg, cardEl) {
 }
 function hideSegThumb() { segHoverThumb.style.display = 'none'; }
 
-// ─────────────────────────────────────────────
-// AUTO-SAVE / RESTORE SESSION  (feature 1)
-// ─────────────────────────────────────────────
+// auto-save / restore session  (feature 1)
 const SESSION_KEY = 'piSlice_session_v1';
 
 function saveSession() {
   if (!segments.length) { localStorage.removeItem(SESSION_KEY); return; }
   const data = {
     savedAt:  Date.now(),
+    instrData,
     segments: segments.map(s => ({
       id: s.id, start: s.start, end: s.end,
       name: s.name, notes: s.notes || '',
       format: s.format, crf: s.crf, compress: s.compress,
       gifFps: s.gifFps, gifWidth: s.gifWidth,
       srcName: s.srcName || s._vid?.filename || '',
+      stepGroup: s.stepGroup || null,
+      perspective: s.perspective || null,
     })),
   };
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(data)); } catch(_) {}
@@ -2291,6 +2529,7 @@ function checkRestore() {
 
 function restoreSession(data) {
   document.getElementById('restore-banner').style.display = 'none';
+  if (data.instrData) Object.assign(instrData, data.instrData);
   segments = data.segments.map(s => ({
     ...s, _vid: null, _orphaned: true, compress: s.compress !== false,
   }));
@@ -2311,35 +2550,54 @@ function linkOrphanedSegments(vid) {
   if (linked) { renderSegments(); setStatus('ready', `Linked ${linked} restored segment${linked!==1?'s':''} to "${vid.filename}"`); }
 }
 
-// ─────────────────────────────────────────────
-// DARK MODE
-// ─────────────────────────────────────────────
+// dark mode
 document.getElementById('btn-dark-mode').addEventListener('click', () => {
   document.body.classList.toggle('dark');
-  document.getElementById('btn-dark-mode').textContent =
-    document.body.classList.contains('dark') ? '☀️' : '🌙';
+  const on = document.body.classList.contains('dark');
+  document.getElementById('btn-dark-mode').textContent = on ? '☀️' : '🌙';
+  localStorage.setItem('piSlice_dark', on ? '1' : '0');
   drawTimeline();
 });
 function isDark() { return document.body.classList.contains('dark'); }
 
-// ─────────────────────────────────────────────
-// BATCH RENAME (applies to selected segments only)
-// ─────────────────────────────────────────────
+// batch rename and select mode
 function updateSelCount() { /* selection tracked via checkboxes */ }
 
 const segPanel = document.getElementById('segments-panel');
+
+// Select toggle — independent of rename panel
+document.getElementById('btn-select-mode').addEventListener('click', () => {
+  const active = segPanel.classList.toggle('select-mode');
+  document.getElementById('btn-select-mode').classList.toggle('active', active);
+  if (!active) { selectedSegIds.clear(); updateExportSelectedBtn(); }
+});
+
+// Rename panel open/close (doesn't change select-mode)
 document.getElementById('btn-batch-rename').addEventListener('click', () => {
   const br   = document.getElementById('batch-rename');
   const open = getComputedStyle(br).display !== 'none';
   br.style.display = open ? 'none' : 'block';
-  segPanel.classList.toggle('select-mode', !open);
-  if (!open) updateSelCount();
+  document.getElementById('btn-batch-rename').classList.toggle('active', !open);
+  // Also enter select mode when rename opens
+  if (!open) { segPanel.classList.add('select-mode'); document.getElementById('btn-select-mode').classList.add('active'); }
 });
 document.getElementById('btn-close-rename').addEventListener('click', () => {
   document.getElementById('batch-rename').style.display = 'none';
-  segPanel.classList.remove('select-mode');
-  selectedSegIds.clear();
-  updateSelCount();
+  document.getElementById('btn-batch-rename').classList.remove('active');
+});
+
+// Collapse / expand all notes
+document.getElementById('btn-notes-toggle-all').addEventListener('click', () => {
+  const allAreas   = [...segmentsList.querySelectorAll('.seg-notes')];
+  if (!allAreas.length) return;
+  const anyHidden  = allAreas.some(a => a.style.display === 'none' || a.style.display === '');
+  allAreas.forEach(area => {
+    area.style.display = anyHidden ? 'block' : 'none';
+    const toggle = area.previousElementSibling;
+    if (toggle?.classList.contains('seg-notes-toggle'))
+      toggle.textContent = anyHidden ? '📝 Notes ▾' : '📝 Notes ▸';
+  });
+  document.getElementById('btn-notes-toggle-all').classList.toggle('active', anyHidden);
 });
 
 document.getElementById('btn-select-all').addEventListener('click', () => {
@@ -2356,6 +2614,7 @@ document.getElementById('btn-select-all').addEventListener('click', () => {
     cb.checked = selectedSegIds.has(segments[i]?.id);
   });
   updateSelCount();
+  updateExportSelectedBtn();
 });
 
 document.getElementById('btn-apply-rename').addEventListener('click', () => {
@@ -2376,9 +2635,39 @@ document.getElementById('btn-apply-rename').addEventListener('click', () => {
   setStatus('ready', `Renamed ${targets.length} segment${targets.length !== 1 ? 's' : ''}`);
 });
 
-// ─────────────────────────────────────────────
-// RESIZABLE PANELS
-// ─────────────────────────────────────────────
+// copy link  (serves clip at a url instead of downloading)
+async function copySegmentLink(seg) {
+  if (!seg._vid) { setStatus('error', 'No source video — import your video first.'); return; }
+  try {
+    setStatus('busy', `Generating link for "${seg.name}"…`);
+    const token = await seg._vid.uploadPromise;
+    const resp  = await fetch('/api/clip_link', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        start:    seg.start,
+        duration: seg.end - seg.start,
+        name:     seg.name,
+        format:   seg.format   || 'original',
+        crf:      seg.crf      || 25,
+        compress: seg.compress !== false,
+      }),
+    });
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      throw new Error(e.error || resp.statusText);
+    }
+    const { url } = await resp.json();
+    const full = `${location.origin}${url}`;
+    await navigator.clipboard.writeText(full);
+    setStatus('ready', `Link copied! Paste in browser to preview: ${full}`);
+  } catch (err) {
+    setStatus('error', 'Copy link failed: ' + err.message);
+  }
+}
+
+// resizable panels
 function makeResizer(handleId, elId, side) {
   const handle = document.getElementById(handleId);
   const el     = document.getElementById(elId);
@@ -2416,6 +2705,7 @@ document.getElementById('rh-left').addEventListener('mousedown', e => {
     document.getElementById('rh-left').classList.remove('dragging');
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
+    localStorage.setItem('piSlice_libW', lib.style.width);
   };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
@@ -2431,6 +2721,7 @@ document.getElementById('rh-right').addEventListener('mousedown', e => {
   };
   const onUp = () => {
     document.getElementById('rh-right').classList.remove('dragging');
+    localStorage.setItem('piSlice_panelW', panel.style.width);
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
   };
@@ -2438,9 +2729,7 @@ document.getElementById('rh-right').addEventListener('mousedown', e => {
   document.addEventListener('mouseup', onUp);
 });
 
-// ─────────────────────────────────────────────
-// MULTI-VIEW DRAW
-// ─────────────────────────────────────────────
+// multi-view draw
 
 // When draw mode turns ON in multi-view, click a cell to select it as draw target
 mvGrid.addEventListener('click', e => {
@@ -2489,11 +2778,278 @@ btnDraw.addEventListener('click', () => {
   }
 });
 
-// ─────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────
+// instruction generator
+const instrFields = {
+  title:          () => document.getElementById('fi-title').value,
+  singles:        () => document.getElementById('fi-singles').value,
+  poc:            () => document.getElementById('fi-poc').value,
+  strategy:       () => document.getElementById('fi-strategy').value,
+  goldenUrl:      () => document.getElementById('fi-golden-url').value,
+  propsFixed:     () => document.getElementById('fi-props-fixed').value,
+  propsVar:       () => document.getElementById('fi-props-var').value,
+  importantNotes: () => document.getElementById('fi-important-notes').value,
+  finalState:     () => document.getElementById('fi-final-state').value,
+  cleanup:        () => document.getElementById('fi-cleanup').value,
+  ppe:            () => document.getElementById('fi-ppe').value,
+  ergonomics:     () => document.getElementById('fi-ergonomics').value,
+  propLinks:      () => document.getElementById('fi-prop-links').value,
+};
+
+const DEFAULT_CLEANUP = `Describe how the operator should clean up this scene. Be sure to mention:\n- How to clean the station after a messy task (like peanut butter or toothpaste)\n- How to clean when an allergen is present (Use Clorox wipes to disinfect entire station, including master controllers)\n- How to dispose of consumable props (boxes, cucumber slices, windmills, etc.)\n- Where to put non-consumable props (back in the kit under the station)`;
+
+function openInstructions() {
+  // Restore saved instrData into fields
+  document.getElementById('fi-title').value          = instrData.title;
+  document.getElementById('fi-singles').value        = instrData.singles;
+  document.getElementById('fi-poc').value            = instrData.poc;
+  document.getElementById('fi-strategy').value       = instrData.strategy;
+  document.getElementById('fi-golden-url').value     = instrData.goldenUrl;
+  document.getElementById('fi-props-fixed').value    = instrData.propsFixed;
+  document.getElementById('fi-props-var').value      = instrData.propsVar;
+  document.getElementById('fi-important-notes').value = instrData.importantNotes;
+  document.getElementById('fi-final-state').value    = instrData.finalState;
+  document.getElementById('fi-cleanup').value        = instrData.cleanup || '';
+  document.getElementById('fi-ppe').value            = instrData.ppe;
+  document.getElementById('fi-ergonomics').value     = instrData.ergonomics || '';
+  document.getElementById('fi-prop-links').value     = instrData.propLinks;
+  document.getElementById('instr-modal').style.display = 'flex';
+}
+
+function closeInstructions() {
+  // Save fields back to instrData
+  instrData.title          = instrFields.title();
+  instrData.singles        = instrFields.singles();
+  instrData.poc            = instrFields.poc();
+  instrData.strategy       = instrFields.strategy();
+  instrData.goldenUrl      = instrFields.goldenUrl();
+  instrData.propsFixed     = instrFields.propsFixed();
+  instrData.propsVar       = instrFields.propsVar();
+  instrData.importantNotes = instrFields.importantNotes();
+  instrData.finalState     = instrFields.finalState();
+  instrData.cleanup        = instrFields.cleanup();
+  instrData.ppe            = instrFields.ppe();
+  instrData.ergonomics     = instrFields.ergonomics();
+  instrData.propLinks      = instrFields.propLinks();
+  saveSession();
+  document.getElementById('instr-modal').style.display = 'none';
+  document.getElementById('instr-preview').style.display = 'none';
+  document.getElementById('instr-body').classList.remove('preview-open');
+}
+
+function formatPropList(label, raw) {
+  if (!raw?.trim()) return `- ${label}: [list items]`;
+  const items = raw.trim().split('\n')
+    .map(l => l.trim()).filter(Boolean)
+    .map(l => `  ${l.startsWith('-') ? l : `- ${l}`}`);
+  return `- ${label}:\n${items.join('\n')}`;
+}
+
+function generateInstructions() {
+  // Save current fields
+  instrData.title          = instrFields.title();
+  instrData.singles        = instrFields.singles();
+  instrData.poc            = instrFields.poc();
+  instrData.strategy       = instrFields.strategy();
+  instrData.goldenUrl      = instrFields.goldenUrl();
+  instrData.propsFixed     = instrFields.propsFixed();
+  instrData.propsVar       = instrFields.propsVar();
+  instrData.importantNotes = instrFields.importantNotes();
+  instrData.finalState     = instrFields.finalState();
+  instrData.cleanup        = instrFields.cleanup();
+  instrData.ppe            = instrFields.ppe();
+  instrData.ergonomics     = instrFields.ergonomics();
+  instrData.propLinks      = instrFields.propLinks();
+
+  const seenGroups = new Set();
+  let stepNum = 0;
+  const stepBlocks = [];
+
+  segments.forEach(seg => {
+    if (seg.stepGroup && seenGroups.has(seg.stepGroup)) return;
+
+    stepNum++;
+    if (seg.stepGroup) {
+      seenGroups.add(seg.stepGroup);
+      const groupSegs = segments.filter(s => s.stepGroup === seg.stepGroup);
+      // Use the base name (strip perspective suffix) for the step heading
+      const baseName  = seg.name.replace(/_[^_]+$/, '');
+      const notes     = seg.notes ? `\n\n${seg.notes.trim()}` : '';
+      const angles    = groupSegs.map(s => `**${s.perspective || 'View'}:**\n[upload video]`).join('\n\n');
+      stepBlocks.push(`### Step ${stepNum}: ${baseName}\n\n${notes}\n\n${angles}\n\n---`);
+    } else {
+      const notes = seg.notes ? `\n\n${seg.notes.trim()}` : '';
+      stepBlocks.push(`### Step ${stepNum}: ${seg.name}\n\n${notes}\n\n---`);
+    }
+  });
+
+  const steps = stepBlocks.join('\n\n');
+
+  const props = [
+    `**Props**`,
+    formatPropList('Fixed Position',    instrData.propsFixed),
+    formatPropList('Variable Position', instrData.propsVar),
+  ].join('\n');
+
+  const importantNoteLines = (instrData.importantNotes || '')
+    .split('\n').filter(l => l.trim())
+    .map(l => l.startsWith('-') ? l : `- ${l}`)
+    .join('\n') || '- ';
+
+  const finalStateLines = (instrData.finalState || '')
+    .split('\n').filter(l => l.trim())
+    .map(l => l.startsWith('-') ? l : `- ${l}`)
+    .join('\n') || '- ';
+
+  const goldenVideo = instrData.goldenUrl
+    ? `[Golden Standard Video](${instrData.goldenUrl})`
+    : ``;
+
+  const md = [
+    `# ${instrData.title || instrData.poc || 'Task Instructions'}`,
+    ``,
+    `**Metadata:**`,
+    `- Singles: ${instrData.singles || ''}`,
+    `- POC: ${instrData.poc || ''}`,
+    `- Strategy: ${instrData.strategy || ''}`,
+    ``,
+    `# Golden Standard Video`,
+    ``,
+    goldenVideo,
+    ``,
+    `# Start State`,
+    ``,
+    props,
+    ``,
+    `# Strategy`,
+    ``,
+    `**Important Notes:**`,
+    importantNoteLines,
+    ``,
+    steps,
+    ``,
+    `### ✅ Final State`,
+    ``,
+    finalStateLines,
+    ``,
+    `---`,
+    ``,
+    `# Clean Up Process`,
+    ``,
+    instrData.cleanup || DEFAULT_CLEANUP,
+    ``,
+    `# 🎬 How Will You Be Evaluated (Execution)`,
+    ``,
+    `A successful episode should`,
+    ``,
+    `- have less than **5 missed grabs**`,
+    `- be under time limit of **3 minutes**`,
+    `- no erratic movements`,
+    `- task is completed`,
+    `- No item should`,
+    `    - fall off the table`,
+    `    - be damaged`,
+    `    - be dropped`,
+    ``,
+    `If any of the above is violated, fail the episode.`,
+    ``,
+    ...(() => {
+      const ppe  = (instrData.ppe || '').trim();
+      const ergo = (instrData.ergonomics || '').trim();
+      const ppeBlank  = !ppe  || ppe.toLowerCase()  === 'n/a';
+      const ergoBlank = !ergo || ergo.toLowerCase() === 'n/a';
+      if (ppeBlank && ergoBlank) return [];
+      return [
+        `# Warnings`, ``,
+        ...(!ppeBlank  ? [`## PPE Requirements`,   ``, ppe,  ``] : []),
+        ...(!ergoBlank ? [`## Ergonomic Guidance`,  ``, ergo, ``] : []),
+      ];
+    })(),
+    ``,
+    `# Prop Links: Prototypers Only`,
+    ``,
+    instrData.propLinks || '',
+  ].join('\n');
+
+  document.getElementById('instr-preview-content').textContent = md;
+  return md;
+}
+
+document.getElementById('btn-close-instr').addEventListener('click', closeInstructions);
+document.getElementById('instr-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('instr-modal')) closeInstructions();
+});
+document.getElementById('btn-generate-instr').addEventListener('click', () => {
+  generateInstructions();
+  document.getElementById('instr-preview').style.display = '';
+  document.getElementById('instr-body').classList.add('preview-open');
+});
+document.getElementById('btn-copy-instr').addEventListener('click', async () => {
+  const md = generateInstructions();
+  await navigator.clipboard.writeText(md);
+  const btn = document.getElementById('btn-copy-instr');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied!';
+  setTimeout(() => { btn.textContent = orig; }, 2000);
+});
+
+document.getElementById('btn-export-package').addEventListener('click', async () => {
+  const segsForZip = selectedSegIds.size > 0
+    ? segments.filter(s => selectedSegIds.has(s.id))
+    : segments;
+  if (!segsForZip.length) { setStatus('error', 'No segments to export.'); return; }
+  const btn = document.getElementById('btn-export-package');
+  btn.textContent = '⏳ Building ZIP…';
+  btn.disabled = true;
+  try {
+    const md = generateInstructions();
+    const resp = await fetch('/api/export_package', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        markdown: md,
+        segments: segsForZip.map((s, i) => ({
+          token:    s._vid?.token,
+          start:    s.start,
+          duration: s.end - s.start,
+          name:     s.name,
+          index:    i + 1,
+          format:   s.format   || 'original',
+          crf:      s.crf      || 25,
+          compress: s.compress !== false,
+        })),
+        zipName: (instrData.title || instrData.poc || 'pi_slice').replace(/[^\w\s-]/g,'').replace(/\s+/g,'_') || 'pi_slice',
+      }),
+    });
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      throw new Error(e.error || resp.statusText);
+    }
+    const blob = await resp.blob();
+    triggerDownload(blob, (instrData.title || instrData.poc || 'pi_slice').replace(/[^\w\s-]/g,'_') + '_export.zip');
+    btn.textContent = '✓ Downloaded!';
+    setTimeout(() => { btn.textContent = '📦 Export ZIP'; btn.disabled = false; }, 2500);
+  } catch (err) {
+    setStatus('error', 'ZIP export failed: ' + err.message);
+    btn.textContent = '📦 Export ZIP';
+    btn.disabled = false;
+  }
+});
+
+// init
 checkServer();
 checkRestore();
+
+// restore persisted preferences
+(function restorePrefs() {
+  if (localStorage.getItem('piSlice_dark') === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('btn-dark-mode').textContent = '☀️';
+  }
+  const libW   = localStorage.getItem('piSlice_libW');
+  const panelW = localStorage.getItem('piSlice_panelW');
+  if (libW)   { const el = document.getElementById('vid-library');    el.style.width = libW;   el.style.flex = 'none'; }
+  if (panelW) { const el = document.getElementById('segments-panel'); el.style.width = panelW; el.style.flex = 'none'; }
+})();
 </script>
 </body>
 </html>

@@ -16,6 +16,7 @@ TEMP_DIR = tempfile.mkdtemp(prefix='pi_slice_')
 atexit.register(shutil.rmtree, TEMP_DIR, True)
 
 uploads = {}   # token -> filepath  (videos AND audio share this dict)
+clips   = {}   # clip_id -> filepath (served via /clip/<id>)
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10 GB
@@ -70,6 +71,135 @@ def upload():
 
 
 # ── trim single segment ───────────────────────────────────────────────────────
+@app.route('/clip/<clip_id>')
+def serve_clip(clip_id):
+    path = clips.get(clip_id)
+    if not path or not os.path.exists(path):
+        return 'Clip not found (may have expired — regenerate the link)', 404
+    ext  = path.rsplit('.', 1)[-1].lower()
+    mime = 'image/gif' if ext == 'gif' else 'video/' + ext
+    return send_file(path, mimetype=mime, conditional=True)
+
+
+@app.route('/api/clip_link', methods=['POST'])
+def clip_link():
+    """Trim a segment, store it server-side, return a URL instead of downloading."""
+    if not FFMPEG:
+        return jsonify({'error': 'ffmpeg not found'}), 503
+    body      = request.get_json()
+    token     = body.get('token')
+    start     = float(body.get('start', 0))
+    duration  = float(body.get('duration', 0))
+    name      = body.get('name', 'clip')
+    fmt       = body.get('format', 'original')
+    crf       = str(max(18, min(35, int(body.get('crf', 25)))))
+    compress  = bool(body.get('compress', True))
+
+    src = uploads.get(token)
+    if not src or not os.path.exists(src):
+        return jsonify({'error': 'Video not found — re-import your video.'}), 404
+
+    src_ext = src.rsplit('.', 1)[-1].lower()
+    out_ext = {'mp4': 'mp4', 'gif': 'gif', 'webm': 'webm'}.get(fmt, src_ext)
+
+    fd, out = tempfile.mkstemp(suffix='.' + out_ext, dir=TEMP_DIR)
+    os.close(fd)
+
+    if fmt == 'gif':
+        cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+               '-vf', f'fps=10,scale=480:-1:flags=lanczos,'
+                      f'split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse', out]
+    elif not compress:
+        cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+               '-c', 'copy', '-avoid_negative_ts', 'make_zero', out]
+    elif fmt == 'webm' or (fmt == 'original' and src_ext == 'webm'):
+        cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+               '-c:v', 'libvpx-vp9', '-crf', crf, '-b:v', '0', '-c:a', 'libopus', out]
+    else:
+        cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+               '-c:v', 'libx264', '-crf', crf, '-c:a', 'aac',
+               '-movflags', '+faststart', out]
+
+    r = subprocess.run(cmd, capture_output=True)
+    if r.returncode != 0:
+        return jsonify({'error': 'ffmpeg error: ' + r.stderr.decode(errors='replace')[-200:]}), 500
+
+    import uuid
+    clip_id = uuid.uuid4().hex[:12]
+    clips[clip_id] = out
+    safe = _safe_name(name) or 'clip'
+    return jsonify({'url': f'/clip/{clip_id}', 'filename': safe + '.' + out_ext})
+
+
+@app.route('/api/export_package', methods=['POST'])
+def export_package():
+    """Trim all segments, bundle with instructions markdown, return as ZIP."""
+    if not FFMPEG:
+        return jsonify({'error': 'ffmpeg not found'}), 503
+
+    body      = request.get_json()
+    segs      = body.get('segments', [])
+    markdown  = body.get('markdown', '')
+    zip_name  = _safe_name(body.get('zipName', 'pi_slice')) or 'pi_slice'
+
+    import zipfile, io
+    buf = io.BytesIO()
+
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Add instructions markdown
+        zf.writestr('instructions.md', markdown.encode('utf-8'))
+
+        for seg in segs:
+            token    = seg.get('token')
+            start    = float(seg.get('start', 0))
+            duration = float(seg.get('duration', 0))
+            name     = seg.get('name', 'clip')
+            idx      = int(seg.get('index', 1))
+            fmt      = seg.get('format', 'original')
+            crf      = str(max(18, min(35, int(seg.get('crf', 25)))))
+            compress = bool(seg.get('compress', True))
+
+            src = uploads.get(token)
+            if not src or not os.path.exists(src):
+                print(f'Skipping segment {idx} — source not found')
+                continue
+
+            src_ext = src.rsplit('.', 1)[-1].lower()
+            out_ext = {'mp4': 'mp4', 'gif': 'gif', 'webm': 'webm'}.get(fmt, src_ext)
+            fd, out = tempfile.mkstemp(suffix='.' + out_ext, dir=TEMP_DIR)
+            os.close(fd)
+
+            try:
+                if not compress:
+                    cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+                           '-c', 'copy', '-avoid_negative_ts', 'make_zero', out]
+                elif fmt == 'webm' or (fmt == 'original' and src_ext == 'webm'):
+                    cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+                           '-c:v', 'libvpx-vp9', '-crf', crf, '-b:v', '0', '-c:a', 'libopus', out]
+                else:
+                    cmd = [FFMPEG, '-y', '-ss', str(start), '-i', src, '-t', str(duration),
+                           '-c:v', 'libx264', '-crf', crf, '-c:a', 'aac',
+                           '-movflags', '+faststart', out]
+
+                r = subprocess.run(cmd, capture_output=True)
+                if r.returncode != 0:
+                    print(f'ffmpeg error for segment {idx}:', r.stderr.decode(errors='replace')[-200:])
+                    continue
+
+                safe     = _safe_name(name) or f'step_{idx:02d}'
+                filename = f'{idx:02d}_{safe}.{out_ext}'
+                print(f'Adding to ZIP: {filename}')
+                with open(out, 'rb') as f:
+                    zf.writestr(filename, f.read())
+            finally:
+                try: os.unlink(out)
+                except: pass
+
+    buf.seek(0)
+    return send_file(buf, mimetype='application/zip', as_attachment=True,
+                     download_name=f'{zip_name}_export.zip')
+
+
 @app.route('/api/thumbnail', methods=['POST'])
 def thumbnail():
     if not FFMPEG:
