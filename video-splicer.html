@@ -1008,6 +1008,7 @@
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-primary"   id="btn-generate-instr">Generate</button>
         <button class="btn btn-secondary" id="btn-copy-instr">Copy for Notion</button>
+        <button class="btn btn-secondary" id="btn-grab-timestamps" title="Copy step timestamps to clipboard">⏱ Timestamps</button>
         <button class="btn btn-orange"    id="btn-export-package">📦 Export ZIP</button>
         <button class="btn btn-secondary" id="btn-close-instr" style="font-size:16px;padding:3px 9px">×</button>
       </div>
@@ -1020,11 +1021,11 @@
           <input class="instr-input" id="fi-title" placeholder="e.g. mobile_dandelion_deployment_no_sticker" style="font-size:13px">
           <div class="instr-section-title" style="margin-top:14px">Metadata</div>
           <label class="instr-label">Singles</label>
-          <input class="instr-input" id="fi-singles" placeholder="e.g. Yes">
+          <input class="instr-input" id="fi-singles" placeholder="Yes or No">
           <label class="instr-label">POC</label>
-          <input class="instr-input" id="fi-poc" placeholder="Point of contact">
+          <input class="instr-input" id="fi-poc" placeholder="e.g. Ricky Hoang">
           <label class="instr-label">Strategy</label>
-          <textarea class="instr-textarea" id="fi-strategy" rows="2" placeholder="Brief strategy description"></textarea>
+          <textarea class="instr-textarea" id="fi-strategy" rows="2" placeholder="e.g. Open or Fixed"></textarea>
         </div>
         <!-- Golden Standard Video -->
         <div class="instr-section">
@@ -1042,7 +1043,7 @@
         <!-- Strategy notes -->
         <div class="instr-section">
           <div class="instr-section-title">Strategy — Important Notes</div>
-          <textarea class="instr-textarea" id="fi-important-notes" rows="3" placeholder="- Key notes for the operator"></textarea>
+          <textarea class="instr-textarea" id="fi-important-notes" rows="3" placeholder="- Key notes for the operator&#10;e.g. If one gripper isn't doing anything, use the other to observe"></textarea>
         </div>
         <!-- Final state -->
         <div class="instr-section">
@@ -2868,17 +2869,18 @@ function generateInstructions() {
     if (seg.stepGroup && seenGroups.has(seg.stepGroup)) return;
 
     stepNum++;
+    const ts = `[${fmtShort(seg.start)} – ${fmtShort(seg.end)}]`;
     if (seg.stepGroup) {
       seenGroups.add(seg.stepGroup);
       const groupSegs = segments.filter(s => s.stepGroup === seg.stepGroup);
-      // Use the base name (strip perspective suffix) for the step heading
+      // use the base name (strip perspective suffix) for the step heading
       const baseName  = seg.name.replace(/_[^_]+$/, '');
       const notes     = seg.notes ? `\n\n${seg.notes.trim()}` : '';
       const angles    = groupSegs.map(s => `**${s.perspective || 'View'}:**\n[upload video]`).join('\n\n');
-      stepBlocks.push(`### Step ${stepNum}: ${baseName}\n\n${notes}\n\n${angles}\n\n---`);
+      stepBlocks.push(`### Step ${stepNum}: ${baseName} ${ts}\n\n${notes}\n\n${angles}\n\n---`);
     } else {
       const notes = seg.notes ? `\n\n${seg.notes.trim()}` : '';
-      stepBlocks.push(`### Step ${stepNum}: ${seg.name}\n\n${notes}\n\n---`);
+      stepBlocks.push(`### Step ${stepNum}: ${seg.name} ${ts}\n\n${notes}\n\n---`);
     }
   });
 
@@ -2992,6 +2994,24 @@ document.getElementById('btn-copy-instr').addEventListener('click', async () => 
   setTimeout(() => { btn.textContent = orig; }, 2000);
 });
 
+document.getElementById('btn-grab-timestamps').addEventListener('click', async () => {
+  const seenGroups = new Set();
+  let stepNum = 0;
+  const lines = [];
+  segments.forEach(seg => {
+    if (seg.stepGroup && seenGroups.has(seg.stepGroup)) return;
+    stepNum++;
+    if (seg.stepGroup) seenGroups.add(seg.stepGroup);
+    lines.push(`Step ${stepNum} [${fmtShort(seg.start)} – ${fmtShort(seg.end)}]`);
+  });
+  if (!lines.length) { setStatus('error', 'No segments to grab timestamps from.'); return; }
+  await navigator.clipboard.writeText(lines.join('\n'));
+  const btn = document.getElementById('btn-grab-timestamps');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied!';
+  setTimeout(() => { btn.textContent = orig; }, 2000);
+});
+
 document.getElementById('btn-export-package').addEventListener('click', async () => {
   const segsForZip = selectedSegIds.size > 0
     ? segments.filter(s => selectedSegIds.has(s.id))
@@ -3007,15 +3027,16 @@ document.getElementById('btn-export-package').addEventListener('click', async ()
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         markdown: md,
+        // zip always exports notion-ready: mp4 crf 28
         segments: segsForZip.map((s, i) => ({
           token:    s._vid?.token,
           start:    s.start,
           duration: s.end - s.start,
           name:     s.name,
           index:    i + 1,
-          format:   s.format   || 'original',
-          crf:      s.crf      || 25,
-          compress: s.compress !== false,
+          format:   'mp4',
+          crf:      28,
+          compress: true,
         })),
         zipName: (instrData.title || instrData.poc || 'pi_slice').replace(/[^\w\s-]/g,'').replace(/\s+/g,'_') || 'pi_slice',
       }),
